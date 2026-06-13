@@ -1,0 +1,22 @@
+{
+  "name": "@vdc/api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "VDC 后端 API 服务",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vdc/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsx": "^4.19.0",
+    "vitest": "^2.0.0"
+  }
+}
