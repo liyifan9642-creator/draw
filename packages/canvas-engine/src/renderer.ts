@@ -42,6 +42,11 @@ export class KonvaRenderer {
   /** Store edgeId → Konva.Arrow 的映射 */
   private konvaEdgeMap = new Map<string, Konva.Arrow>();
 
+  /** 已加载的图片缓存（URL → HTMLImageElement） */
+  private imageCache = new Map<string, HTMLImageElement>();
+  /** 正在加载中的图片 URL 集合 */
+  private loadingImages = new Set<string>();
+
   /** 上一次同步时的快照，用于脏检测 */
   private lastNodesSnapshot: string = "";
   private lastEdgesSnapshot: string = "";
@@ -322,8 +327,13 @@ export class KonvaRenderer {
         });
         break;
 
+      case "image":
+        // 图像节点：先创建占位 Rect，异步加载图片后替换为 Konva.Image
+        shape = this.createImageNode(node);
+        break;
+
       default:
-        // image / group / path 等暂不实现，返回占位 Rect
+        // group / path 等暂不实现，返回占位 Rect
         shape = new Konva.Rect({
           x: node.x,
           y: node.y,
@@ -347,10 +357,150 @@ export class KonvaRenderer {
     return shape;
   }
 
+  // ─── 图像节点处理 ────────────────────────────────────────────
+
+  /**
+   * 创建图像节点
+   *
+   * 如果节点有 imageUrl，异步加载图片并创建 Konva.Image。
+   * 加载期间显示占位矩形。
+   * 如果节点没有 imageUrl（如 Loading 占位），显示文本占位。
+   */
+  private createImageNode(node: Node): Konva.Rect | Konva.Image {
+    const width = node.width ?? 300;
+    const height = node.height ?? 300;
+
+    // 如果没有 imageUrl，显示 Loading 占位矩形
+    if (!node.imageUrl) {
+      return new Konva.Rect({
+        x: node.x,
+        y: node.y,
+        width,
+        height,
+        fill: "#E3F2FD",
+        stroke: "#90CAF9",
+        strokeWidth: 2,
+        cornerRadius: 8,
+        rotation: node.rotation,
+        opacity: node.opacity,
+        scaleX: node.scaleX,
+        scaleY: node.scaleY,
+      });
+    }
+
+    // 有 imageUrl，检查缓存
+    const cached = this.imageCache.get(node.imageUrl);
+    if (cached) {
+      // 图片已缓存，直接创建 Konva.Image
+      return new Konva.Image({
+        x: node.x,
+        y: node.y,
+        width,
+        height,
+        image: cached,
+        rotation: node.rotation,
+        opacity: node.opacity,
+        scaleX: node.scaleX,
+        scaleY: node.scaleY,
+      });
+    }
+
+    // 图片未缓存，先显示占位矩形，异步加载
+    const placeholder = new Konva.Rect({
+      x: node.x,
+      y: node.y,
+      width,
+      height,
+      fill: "#E3F2FD",
+      stroke: "#90CAF9",
+      strokeWidth: 2,
+      cornerRadius: 8,
+      rotation: node.rotation,
+      opacity: node.opacity,
+      scaleX: node.scaleX,
+      scaleY: node.scaleY,
+    });
+
+    // 异步加载图片
+    this.loadImage(node.id, node.imageUrl, width, height);
+
+    return placeholder;
+  }
+
+  /**
+   * 异步加载图片并替换占位节点
+   */
+  private loadImage(nodeId: string, imageUrl: string, width: number, height: number): void {
+    // 防止重复加载
+    if (this.loadingImages.has(imageUrl)) return;
+    this.loadingImages.add(imageUrl);
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = () => {
+      // 缓存图片
+      this.imageCache.set(imageUrl, img);
+      this.loadingImages.delete(imageUrl);
+
+      // 查找对应的 Konva 节点并替换为 Konva.Image
+      const konvaNode = this.konvaNodeMap.get(nodeId);
+      if (!konvaNode) return; // 节点已被删除
+
+      const storeNode = this.store.getNodeById(nodeId);
+      if (!storeNode) return; // 节点已被删除
+
+      // 创建新的 Konva.Image 替换占位 Rect
+      const imageNode = new Konva.Image({
+        x: storeNode.x,
+        y: storeNode.y,
+        width,
+        height,
+        image: img,
+        rotation: storeNode.rotation,
+        opacity: storeNode.opacity,
+        scaleX: storeNode.scaleX,
+        scaleY: storeNode.scaleY,
+      });
+      imageNode.setAttr("storeId", nodeId);
+
+      // 替换节点
+      const parent = konvaNode.getParent();
+      if (parent) {
+        konvaNode.destroy();
+        parent.add(imageNode);
+        this.konvaNodeMap.set(nodeId, imageNode);
+        (parent as Konva.Layer).batchDraw();
+      }
+    };
+
+    img.onerror = () => {
+      this.loadingImages.delete(imageUrl);
+      console.warn(`[KonvaRenderer] 图片加载失败: ${imageUrl}`);
+
+      // 加载失败时显示错误占位
+      const konvaNode = this.konvaNodeMap.get(nodeId);
+      if (konvaNode && konvaNode instanceof Konva.Rect) {
+        konvaNode.fill("#FFEBEE");
+        konvaNode.stroke("#EF9A9A");
+        konvaNode.getParent()?.batchDraw();
+      }
+    };
+
+    img.src = imageUrl;
+  }
+
   // ─── Konva 节点更新（脏矩形增量更新） ──────────────────────
 
   /** 只更新变更的属性，避免全量重建 */
   private updateKonvaNode(konvaNode: Konva.Node, storeNode: Node): void {
+    // 检查是否需要类型转换（如 text placeholder → image）
+    const needsRecreation = this.needsNodeRecreation(konvaNode, storeNode);
+    if (needsRecreation) {
+      this.recreateNode(konvaNode, storeNode);
+      return;
+    }
+
     // 通用属性
     konvaNode.x(storeNode.x);
     konvaNode.y(storeNode.y);
@@ -392,6 +542,11 @@ export class KonvaRenderer {
         (konvaNode as Konva.Text).fill(storeNode.fill);
         break;
 
+      case "image":
+        // 图像节点的通用更新（位置、缩放等已在上面处理）
+        // 图片内容变更需要 recreate
+        break;
+
       case "line":
         (konvaNode as Konva.Line).points([
           storeNode.x,
@@ -404,10 +559,61 @@ export class KonvaRenderer {
         break;
 
       default:
-        // triangle, ellipse, placeholder 等
+        // triangle, placeholder 等
         if ("fill" in konvaNode) (konvaNode as any).fill(storeNode.fill);
         if ("stroke" in konvaNode) (konvaNode as any).stroke(storeNode.stroke);
         break;
+    }
+  }
+
+  /**
+   * 检查是否需要重建节点（类型变更或图片 URL 变更）
+   */
+  private needsNodeRecreation(konvaNode: Konva.Node, storeNode: Node): boolean {
+    // 检查是否为 Konva.Image 类型
+    const isKonvaImage = konvaNode instanceof Konva.Image;
+    const isKonvaText = konvaNode instanceof Konva.Text;
+    const isKonvaRect = konvaNode instanceof Konva.Rect;
+
+    // Store 节点是 image 类型
+    if (storeNode.type === "image") {
+      // 如果 Konva 节点不是 Image，需要重建（placeholder → image）
+      if (!isKonvaImage) return true;
+      // 如果 imageUrl 变更，需要重建
+      const currentImageUrl = konvaNode.getAttr("imageUrl");
+      if (currentImageUrl !== storeNode.imageUrl) return true;
+    }
+
+    // 如果 Store 节点是 text 但有 imageUrl（Loading 占位），检查是否需要更新文本
+    if (storeNode.type === "text" && isKonvaText) {
+      // 文本节点的文本变更不需要重建
+      return false;
+    }
+
+    return false;
+  }
+
+  /**
+   * 重建节点（用于类型变更，如 text placeholder → image）
+   */
+  private recreateNode(oldKonvaNode: Konva.Node, storeNode: Node): void {
+    const parent = oldKonvaNode.getParent();
+    if (!parent) return;
+
+    // 销毁旧节点
+    oldKonvaNode.destroy();
+
+    // 创建新节点
+    const newKonvaNode = this.createKonvaNode(storeNode);
+    if (newKonvaNode) {
+      newKonvaNode.setAttr("storeId", storeNode.id);
+      // 如果是 image 节点，记录 imageUrl
+      if (storeNode.type === "image" && storeNode.imageUrl) {
+        newKonvaNode.setAttr("imageUrl", storeNode.imageUrl);
+      }
+      parent.add(newKonvaNode);
+      this.konvaNodeMap.set(storeNode.id, newKonvaNode);
+      (parent as Konva.Layer).batchDraw();
     }
   }
 
@@ -428,7 +634,7 @@ export class KonvaRenderer {
     return nodes
       .map(
         (n) =>
-          `${n.id}:${n.x},${n.y},${n.width},${n.height},${n.radius},${n.fill},${n.stroke},${n.rotation},${n.opacity},${n.visible},${n.zIndex},${n.text},${n.fontSize}`
+          `${n.id}:${n.type},${n.x},${n.y},${n.width},${n.height},${n.radius},${n.fill},${n.stroke},${n.rotation},${n.opacity},${n.visible},${n.zIndex},${n.text},${n.fontSize},${n.imageUrl ?? ""}`
       )
       .join("|");
   }

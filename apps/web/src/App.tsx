@@ -9,8 +9,13 @@
 import { useEffect, useRef, useState } from "react";
 import { CanvasStore, KonvaRenderer } from "@vdc/canvas-engine";
 import { useVoiceAgent } from "./hooks/useVoiceAgent";
+import { setCanvasSize } from "@vdc/voice-agent";
 import { VoiceButton } from "./components/VoiceButton";
 import { TextInput } from "./components/TextInput";
+
+/** 画布尺寸常量（与 KonvaRenderer 初始化一致） */
+const CANVAS_WIDTH = 1000;
+const CANVAS_HEIGHT = 600;
 
 // ─── 状态日志组件 ────────────────────────────────────────────
 
@@ -44,9 +49,12 @@ export default function App() {
 
     const renderer = new KonvaRenderer(store, {
       container: containerRef.current,
-      width: 1000,
-      height: 600,
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
     });
+
+    // 同步画布尺寸到工具上下文（供 position 解析使用）
+    setCanvasSize(CANVAS_WIDTH, CANVAS_HEIGHT);
 
     // 订阅 Store 变更，同步 UI 状态
     const unsub = store.subscribe(() => {
@@ -92,7 +100,7 @@ export default function App() {
 
           {/* 文本输入 */}
           <div style={styles.inputWrapper}>
-            <TextInput store={store} onLog={addLog} />
+            <TextInput store={store} canvasWidth={CANVAS_WIDTH} canvasHeight={CANVAS_HEIGHT} onLog={addLog} />
           </div>
         </div>
 

@@ -7,13 +7,17 @@
  * - 语音流的开启/关闭控制
  */
 
-export { initTools, getCanvasTools } from "./tools";
+export { initTools, getCanvasTools, setCanvasSize, getCanvasSize, resolvePosition } from "./tools";
 export type { AgentStatus, AgentMode, AgentConfig, ToolHandler } from "./types";
+export type { SpatialPosition } from "./tools";
+export { generateImage } from "./imageService";
+export type { ImageStyle, ImageGenerationRequest, ImageGenerationResult } from "./imageService";
 
 // 单独导出各工具函数，便于单元测试
 export {
   set_canvas_background,
   generate_shape,
+  generate_image,
   modify_node,
   delete_node,
   undo_action,
