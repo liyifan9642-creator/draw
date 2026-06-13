@@ -16,7 +16,7 @@
 - [x] 初始化 apps/api（骨架）
 - [x] 验证 pnpm install & build 通过
 
-## Phase 1: 核心画布引擎 ⬅ 当前阶段
+## Phase 1: 核心画布引擎 ✅ 已完成
 
 - [x] CanvasState 类型定义（Node / Edge / ActionEntry）→ `packages/shared/src/types/`
 - [x] 状态机 CanvasStore 实现（纯数据层，无渲染依赖）→ `packages/canvas-engine/src/store.ts`
@@ -25,16 +25,17 @@
 - [x] 图形操作工具（addNode / updateNode / deleteNode / deleteNodesByType）
 - [x] 边操作（addEdge / deleteEdge）
 - [x] 空间操作（moveNode / resizeNode / rotateNode / reorderNode）
-- [ ] Konva 渲染层（Stage / Layer / 基础图形组件）
+- [x] Konva 渲染层（Stage / Layer / 基础图形组件）→ `packages/canvas-engine/src/renderer.ts`
 
-## Phase 2: 语音管线集成
+## Phase 2: 语音管线集成 ⏳ 代码已完成，等待用户验收
 
-- [ ] WebSocket Client 封装
-- [ ] Deepgram STT 集成（实时语音转文本）
-- [ ] ElevenLabs TTS 集成（文本转语音反馈）
-- [ ] Action Dispatcher（tool_calls 解析 → Store 操作）
-- [ ] LLM 系统提示词注入
-- [ ] 语音转录纠错映射表
+- [x] ElevenLabs Conversational AI SDK 集成（@elevenlabs/client）
+- [x] Action Dispatcher（Client Tools → CanvasStore 方法映射）→ `packages/voice-agent/src/tools.ts`
+- [x] useVoiceAgent React Hook → `apps/web/src/hooks/useVoiceAgent.ts`
+- [x] VoiceButton 悬浮控制按钮 → `apps/web/src/components/VoiceButton.tsx`
+- [x] App.tsx 集成（Konva 渲染层 + 语音 Agent）
+- [x] .env.example 环境变量配置
+- [ ] 用户验收测试 — 等待反馈"语音到画布的操作测试成功"
 
 ## Phase 3: 高级图形能力
 

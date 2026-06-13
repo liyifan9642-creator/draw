@@ -34,10 +34,13 @@ interface InternalState {
 
 // ─── CanvasStore ─────────────────────────────────────────────
 
+export type StoreListener = () => void;
+
 export class CanvasStore {
   private state: InternalState;
   private undoStack: CanvasSnapshot[] = [];
   private redoStack: CanvasSnapshot[] = [];
+  private listeners = new Set<StoreListener>();
 
   constructor(initialState?: Partial<InternalState>) {
     this.state = {
@@ -46,6 +49,19 @@ export class CanvasStore {
       background: initialState?.background ?? CANVAS_DEFAULTS.background,
       actionLog: initialState?.actionLog ?? [],
     };
+  }
+
+  /** 订阅状态变更，返回取消订阅函数 */
+  subscribe(listener: StoreListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /** 通知所有订阅者 */
+  private notify(): void {
+    for (const listener of this.listeners) {
+      listener();
+    }
   }
 
   // ─── 查询 ──────────────────────────────────────────────────
@@ -135,6 +151,7 @@ export class CanvasStore {
     this.state.nodes.push({ ...node });
     this.recordAction("create", node.id, {}, { ...node });
     this.clearRedoStack();
+    this.notify();
 
     return {
       success: true,
@@ -162,6 +179,7 @@ export class CanvasStore {
     node.metadata = { ...node.metadata, updatedAt: Date.now() };
     this.recordAction("update", node.id, beforeState, { ...node });
     this.clearRedoStack();
+    this.notify();
 
     return {
       success: true,
@@ -207,6 +225,7 @@ export class CanvasStore {
     this.state.nodes = this.state.nodes.filter((n) => n.id !== node.id);
     this.recordAction("delete", node.id, beforeState, {});
     this.clearRedoStack();
+    this.notify();
 
     return {
       success: true,
@@ -237,6 +256,7 @@ export class CanvasStore {
       this.recordAction("delete", node.id, { ...node }, {});
     }
     this.clearRedoStack();
+    this.notify();
 
     return {
       success: true,
@@ -269,6 +289,7 @@ export class CanvasStore {
     this.pushSnapshot();
     this.state.edges.push({ ...edge });
     this.clearRedoStack();
+    this.notify();
 
     return {
       success: true,
@@ -290,6 +311,7 @@ export class CanvasStore {
     this.pushSnapshot();
     this.state.edges.splice(idx, 1);
     this.clearRedoStack();
+    this.notify();
 
     return { success: true, message: "已删除连线" };
   }
@@ -301,6 +323,7 @@ export class CanvasStore {
     this.pushSnapshot();
     this.state.background = color;
     this.clearRedoStack();
+    this.notify();
 
     return { success: true, message: `已将背景色设为 ${color}` };
   }
@@ -324,6 +347,7 @@ export class CanvasStore {
     this.undoStack = [];
     this.redoStack = [];
     this.state.actionLog = [];
+    this.notify();
 
     return { success: true, message: "画布已清空，历史记录已重置" };
   }
@@ -403,6 +427,7 @@ export class CanvasStore {
 
     this.recordAction("reorder", node.id, {}, { zIndex: node.zIndex });
     this.clearRedoStack();
+    this.notify();
 
     return {
       success: true,
@@ -432,6 +457,7 @@ export class CanvasStore {
     // 恢复 undo 栈顶的快照
     const snapshot = this.undoStack.pop()!;
     this.restoreSnapshot(snapshot);
+    this.notify();
 
     return {
       success: true,
@@ -458,6 +484,7 @@ export class CanvasStore {
     // 恢复 redo 栈顶的快照
     const snapshot = this.redoStack.pop()!;
     this.restoreSnapshot(snapshot);
+    this.notify();
 
     return {
       success: true,

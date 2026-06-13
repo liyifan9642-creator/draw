@@ -14,7 +14,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@vdc/shared": "workspace:*"
+    "@elevenlabs/client": "^1.11.1",
+    "@vdc/shared": "workspace:*",
+    "@vdc/canvas-engine": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

@@ -1,0 +1,33 @@
+# VDC (Voice-Driven Canvas) — 开发进度
+
+> 自动生成于 2026-06-13
+
+## Phase 0: 项目初始化 ✅ 已完成
+
+- pnpm monorepo 根配置
+- apps/web (React 18 + Vite 5 + Konva 9)
+- packages/shared (类型 + 常量)
+- packages/canvas-engine (骨架)
+- packages/voice-agent (骨架)
+
+## Phase 1: 核心画布引擎 ✅ 已完成
+
+- CanvasStore 状态机 (CRUD + undo/redo + subscribe) — 55 个单元测试全通过
+- KonvaRenderer 保留模式渲染层 (三层 Layer: bgLayer/edgeLayer/nodeLayer，脏检测 + 增量更新)
+- 用户视觉验收: ⏳ 待确认
+
+## Phase 2: 语音智能体接入 ⏳ 代码已完成，等待验收
+
+- [x] tools.ts — 11 个客户端工具映射到 CanvasStore 方法
+- [x] types.ts — Agent 类型定义
+- [x] useVoiceAgent.ts — React Hook (ElevenLabs Conversation.startSession)
+- [x] VoiceButton.tsx — 悬浮按钮 + 状态指示器
+- [x] App.tsx — 集成 Konva + Voice Agent
+- [x] .env.example — 环境变量配置
+- [ ] 用户验收测试 — 等待用户反馈"语音到画布的操作测试成功"
+
+## Definition of Done
+
+当用户反馈测试成功后：
+1. 更新此文件，标记 Phase 2 为已完成
+2. 执行 Git Commit: `feat(agent): integrate realtime voice SDK and map client tools to state machine`

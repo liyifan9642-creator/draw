@@ -10,3 +10,6 @@
  */
 
 export { CanvasStore } from "./store";
+export type { StoreListener } from "./store";
+export { KonvaRenderer } from "./renderer";
+export type { RendererOptions } from "./renderer";

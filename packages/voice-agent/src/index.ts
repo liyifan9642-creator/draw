@@ -2,11 +2,25 @@
  * @vdc/voice-agent — 语音 Agent 核心
  *
  * 负责：
- * - STT 流水线（Deepgram / Whisper 实时语音转文本）
- * - LLM Agent 逻辑（GPT-4o / Claude 意图识别 + 工具调用）
- * - TTS 流水线（ElevenLabs / Deepgram Aura 文本转语音）
- * - 工具注册与调用分发
- * - Prompt 模板管理
- *
- * TODO: Phase 2 实现
+ * - 工具注册与调用分发（Client Tools → CanvasStore 方法映射）
+ * - ElevenLabs Conversational AI SDK 集成
+ * - 语音流的开启/关闭控制
  */
+
+export { initTools, getCanvasTools } from "./tools";
+export type { AgentStatus, AgentMode, AgentConfig, ToolHandler } from "./types";
+
+// 单独导出各工具函数，便于单元测试
+export {
+  set_canvas_background,
+  generate_shape,
+  modify_node,
+  delete_node,
+  undo_action,
+  redo_action,
+  clear_canvas,
+  add_text,
+  reorder_node,
+  move_node,
+  query_canvas_state,
+} from "./tools";
