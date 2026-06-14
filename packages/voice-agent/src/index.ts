@@ -18,6 +18,8 @@ export type { AlignmentRelation } from "@vdc/canvas-engine";
 // 模板系统
 export { generateTemplate, getTemplateNames, getTemplateDescriptions, resolveTemplateName } from "./templates";
 export type { TemplateName, TemplateParams, TemplateResult } from "./templates";
+export { generateComplexTemplate, getComplexTemplateNames, resolveComplexTemplateName } from "./complexTemplates";
+export type { ComplexTemplateName } from "./complexTemplates";
 
 // 单独导出各工具函数，便于单元测试
 export {

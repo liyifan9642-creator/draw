@@ -81,14 +81,35 @@ export function startAsr(
     }
   };
 
+  let networkRetries = 0;
+  const MAX_NETWORK_RETRIES = 3;
+
   recognition.onerror = (event: any) => {
     // "no-speech" 不算真正错误，忽略
     if (event.error === "no-speech") return;
 
+    // 网络错误：自动重试（Web Speech API 依赖 Google 云端，偶尔断开）
+    if (event.error === "network") {
+      networkRetries++;
+      if (networkRetries <= MAX_NETWORK_RETRIES && isListening) {
+        // 静默重试，不通知用户
+        setTimeout(() => {
+          if (isListening) {
+            try { recognition.start(); } catch { /* 忽略 */ }
+          }
+        }, 1000 * networkRetries); // 递增延迟
+        return;
+      }
+      // 重试次数用尽，才通知用户
+      callbacks.onError("语音识别网络不稳定，请检查网络连接");
+      return;
+    }
+
+    networkRetries = 0; // 非网络错误时重置计数
+
     const errorMap: Record<string, string> = {
       "not-allowed": "麦克风权限被拒绝，请在浏览器设置中允许",
       "audio-capture": "未检测到麦克风设备",
-      "network": "语音识别网络错误",
       "aborted": "语音识别被中断",
     };
 
@@ -109,6 +130,7 @@ export function startAsr(
   };
 
   recognition.onstart = () => {
+    networkRetries = 0; // 连接成功，重置重试计数
     callbacks.onStateChange("listening");
   };
 

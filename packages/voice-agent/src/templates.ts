@@ -8,6 +8,8 @@
  * 生成的 pathData 是相对坐标，Node 的 x/y 作为偏移。
  */
 
+import { generateComplexTemplate } from "./complexTemplates";
+
 // ─── 类型 ────────────────────────────────────────────────────
 
 export interface TemplateParams {
@@ -422,9 +424,13 @@ export function generateTemplate(
   name: string,
   params: TemplateParams
 ): TemplateResult | null {
+  // 先查找基础模板
   const resolved = resolveTemplateName(name);
-  if (!resolved) return null;
+  if (resolved) {
+    const fn = TEMPLATE_MAP[resolved];
+    return fn(params);
+  }
 
-  const fn = TEMPLATE_MAP[resolved];
-  return fn(params);
+  // 再查找复杂模板
+  return generateComplexTemplate(name, params);
 }
