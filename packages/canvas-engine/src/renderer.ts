@@ -14,6 +14,13 @@ import Konva from "konva";
 import type { Node, Edge } from "@vdc/shared";
 import { CANVAS_DEFAULTS, GRID_COLS, GRID_ROWS } from "@vdc/shared";
 import type { CanvasStore } from "./store";
+import {
+  createRoughRect,
+  createRoughCircle,
+  createRoughEllipse,
+  createRoughTriangle,
+  createRoughLine,
+} from "./roughRenderer";
 
 // ─── 类型 ────────────────────────────────────────────────────
 
@@ -314,7 +321,7 @@ export class KonvaRenderer {
 
     switch (node.type) {
       case "rect":
-        shape = new Konva.Rect({
+        shape = createRoughRect({
           x: node.x,
           y: node.y,
           width: node.width ?? 100,
@@ -324,13 +331,14 @@ export class KonvaRenderer {
           strokeWidth: node.strokeWidth,
           rotation: node.rotation,
           opacity: node.opacity,
+          visible: node.visible,
           scaleX: node.scaleX,
           scaleY: node.scaleY,
         });
         break;
 
       case "circle":
-        shape = new Konva.Circle({
+        shape = createRoughCircle({
           x: node.x,
           y: node.y,
           radius: node.radius ?? 50,
@@ -339,49 +347,55 @@ export class KonvaRenderer {
           strokeWidth: node.strokeWidth,
           rotation: node.rotation,
           opacity: node.opacity,
+          visible: node.visible,
           scaleX: node.scaleX,
           scaleY: node.scaleY,
         });
         break;
 
       case "ellipse":
-        shape = new Konva.Ellipse({
+        shape = createRoughEllipse({
           x: node.x,
           y: node.y,
-          radiusX: (node.width ?? 100) / 2,
-          radiusY: (node.height ?? 100) / 2,
+          width: node.width ?? 100,
+          height: node.height ?? 100,
           fill: node.fill,
           stroke: node.stroke,
           strokeWidth: node.strokeWidth,
           rotation: node.rotation,
           opacity: node.opacity,
+          visible: node.visible,
           scaleX: node.scaleX,
           scaleY: node.scaleY,
         });
         break;
 
       case "triangle":
-        shape = new Konva.RegularPolygon({
+        shape = createRoughTriangle({
           x: node.x,
           y: node.y,
-          sides: 3,
           radius: node.radius ?? Math.min(node.width ?? 50, node.height ?? 50),
           fill: node.fill,
           stroke: node.stroke,
           strokeWidth: node.strokeWidth,
           rotation: node.rotation,
           opacity: node.opacity,
+          visible: node.visible,
           scaleX: node.scaleX,
           scaleY: node.scaleY,
         });
         break;
 
       case "line":
-        shape = new Konva.Line({
-          points: [node.x, node.y, node.x + (node.width ?? 100), node.y + (node.height ?? 0)],
+        shape = createRoughLine({
+          x: node.x,
+          y: node.y,
+          x2: node.x + (node.width ?? 100),
+          y2: node.y + (node.height ?? 0),
           stroke: node.stroke || node.fill,
           strokeWidth: node.strokeWidth || 2,
           opacity: node.opacity,
+          visible: node.visible,
         });
         break;
 
@@ -665,20 +679,17 @@ export class KonvaRenderer {
    * 检查是否需要重建节点（类型变更或图片 URL 变更）
    */
   private needsNodeRecreation(konvaNode: Konva.Node, storeNode: Node): boolean {
-    // 检测 Konva 节点的实际类型
     const isKonvaImage = konvaNode instanceof Konva.Image;
     const isKonvaText = konvaNode instanceof Konva.Text;
-    const isKonvaRect = konvaNode instanceof Konva.Rect;
-    const isKonvaCircle = konvaNode instanceof Konva.Circle;
     const isKonvaPath = konvaNode instanceof Konva.Path;
+    const isKonvaShape = konvaNode instanceof Konva.Shape;
 
-    // Store 类型与 Konva 节点类型不匹配 → 需要重建
-    // 这覆盖了 undo/redo 导致的类型回退（如 image → text）
+    // rough 形状（rect/circle/ellipse/triangle/line）都是 Konva.Shape
+    // 它们不是 Konva.Rect/Konva.Circle，所以不能用类型不匹配来判断
+    // 只有 image/text/path 的类型不匹配才需要重建
     const typeMismatch =
       (storeNode.type === "image" && !isKonvaImage) ||
       (storeNode.type === "text" && !isKonvaText) ||
-      (storeNode.type === "rect" && !isKonvaRect) ||
-      (storeNode.type === "circle" && !isKonvaCircle) ||
       (storeNode.type === "path" && !isKonvaPath);
 
     if (typeMismatch) return true;
@@ -687,6 +698,12 @@ export class KonvaRenderer {
     if (storeNode.type === "image" && isKonvaImage) {
       const currentImageUrl = konvaNode.getAttr("imageUrl");
       if (currentImageUrl !== storeNode.imageUrl) return true;
+    }
+
+    // rough 形状（rect/circle/ellipse/triangle/line）是 Konva.Shape
+    // updateKonvaNode 中的类型特定更新对它们无效，始终重建
+    if (isKonvaShape && !isKonvaImage && !isKonvaText && !isKonvaPath) {
+      return true;
     }
 
     return false;

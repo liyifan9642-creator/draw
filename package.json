@@ -17,6 +17,7 @@
   "packageManager": "pnpm@9.15.0",
   "dependencies": {
     "kiwi.js": "^1.1.3",
-    "openai": "^6.42.0"
+    "openai": "^6.42.0",
+    "roughjs": "^4.6.6"
   }
 }

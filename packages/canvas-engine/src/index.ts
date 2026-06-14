@@ -17,3 +17,10 @@ export { KonvaRenderer } from "./renderer";
 export type { RendererOptions } from "./renderer";
 export { solveAlignment, getBoundingBox } from "./constraintSolver";
 export type { AlignmentRelation, BoundingBox, ConstraintResult } from "./constraintSolver";
+export {
+  createRoughRect,
+  createRoughCircle,
+  createRoughEllipse,
+  createRoughTriangle,
+  createRoughLine,
+} from "./roughRenderer";
