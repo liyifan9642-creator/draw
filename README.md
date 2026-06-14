@@ -3,6 +3,7 @@
 Demo演示视频：通过网盘分享的文件：
 链接: https://pan.baidu.com/s/1AC98mG_LajXTWNs-EwHfew?pwd=7mpr 提取码: 7mpr
 
+📄 [设计文档](设计文档.md) — 指令能力规划、实现情况与改进目标
 
 
 > AI 语音绘图工具 — 说话就能画
