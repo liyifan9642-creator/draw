@@ -6,7 +6,11 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    dependencies:
+      kiwi.js:
+        specifier: ^1.1.3
+        version: 1.1.3
 
   apps/api:
     dependencies:
@@ -864,6 +868,9 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
+  kiwi.js@1.1.3:
+    resolution: {integrity: sha512-aBA32N0LjuF0RIeV+OVhT8wnGAwdLYynKxkHbRvatI7yajOBM3OUjzTuzt3w9UnY9TYt7U65oe7U8EXlUHuTrQ==}
+
   konva@9.3.22:
     resolution: {integrity: sha512-yQI5d1bmELlD/fowuyfOp9ff+oamg26WOCkyqUyc+nczD/lhRa3EvD2MZOoc4c1293TAubW9n34fSQLgSeEgSw==}
 
@@ -1710,6 +1717,8 @@ snapshots:
   jsesc@3.1.0: {}
 
   json5@2.2.3: {}
+
+  kiwi.js@1.1.3: {}
 
   konva@9.3.22: {}
 

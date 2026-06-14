@@ -14,6 +14,8 @@ import type {
   NodeMetadata,
 } from "@vdc/shared";
 import { CANVAS_DEFAULTS, HISTORY_LIMITS } from "@vdc/shared";
+import { solveAlignment, getBoundingBox } from "./constraintSolver";
+import type { AlignmentRelation } from "./constraintSolver";
 
 // ─── 快照：用于 undo/redo 栈的不可变状态副本 ────────────────
 
@@ -22,6 +24,9 @@ interface CanvasSnapshot {
   edges: Edge[];
   background: string;
 }
+
+/** localStorage 存储键 */
+const STORAGE_KEY = "vdc-canvas-state";
 
 // ─── 内部状态 ────────────────────────────────────────────────
 
@@ -51,6 +56,28 @@ export class CanvasStore {
     };
   }
 
+  /**
+   * 从 localStorage 恢复状态（静态工厂方法）
+   * 若 localStorage 中有数据，返回恢复后的 Store；否则返回空白 Store
+   */
+  static hydrate(): CanvasStore {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        return new CanvasStore({
+          nodes: data.nodes ?? [],
+          edges: data.edges ?? [],
+          background: data.background ?? CANVAS_DEFAULTS.background,
+          actionLog: data.actionLog ?? [],
+        });
+      }
+    } catch {
+      // localStorage 解析失败，使用空白画布
+    }
+    return new CanvasStore();
+  }
+
   /** 订阅状态变更，返回取消订阅函数 */
   subscribe(listener: StoreListener): () => void {
     this.listeners.add(listener);
@@ -59,9 +86,42 @@ export class CanvasStore {
 
   /** 通知所有订阅者 */
   private notify(): void {
+    // 自动持久化到 localStorage
+    this.persist();
+
     for (const listener of this.listeners) {
       listener();
     }
+  }
+
+  /** 将当前状态序列化到 localStorage（自动保存） */
+  private persist(): void {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.toJSON()));
+    } catch {
+      // localStorage 写入失败（可能存储已满），静默处理
+    }
+  }
+
+  /**
+   * 导入外部状态（覆盖当前画布）
+   * 会将当前状态压入 undo 栈，以便用户反悔
+   */
+  importState(data: { nodes?: Node[]; edges?: Edge[]; background?: string }): ToolCallResult {
+    // 保存当前状态到 undo 栈（导入前）
+    this.pushSnapshot();
+
+    this.state.nodes = data.nodes ?? [];
+    this.state.edges = data.edges ?? [];
+    this.state.background = data.background ?? CANVAS_DEFAULTS.background;
+    this.state.actionLog = [];
+    this.clearRedoStack();
+    this.notify();
+
+    return {
+      success: true,
+      message: `已导入画布：${this.state.nodes.length} 个节点，${this.state.edges.length} 条连线`,
+    };
   }
 
   // ─── 查询 ──────────────────────────────────────────────────
@@ -371,6 +431,52 @@ export class CanvasStore {
   /** 旋转节点 */
   rotateNode(target: string, rotation: number): ToolCallResult {
     return this.updateNode(target, { rotation });
+  }
+
+  /**
+   * 几何约束对齐
+   *
+   * 使用 kiwi.js 约束求解器，根据对齐关系计算目标节点的精确坐标。
+   * 支持 leftOf、rightOf、alignTop、alignCenter 四种关系。
+   *
+   * @param targetNodeId    目标节点 ID 或 name
+   * @param referenceNodeId 参考节点 ID 或 name
+   * @param relation        对齐关系
+   * @param offset          偏移量（px），默认 0
+   */
+  alignNode(
+    targetNodeId: string,
+    referenceNodeId: string,
+    relation: AlignmentRelation,
+    offset: number = 0
+  ): ToolCallResult {
+    const target = this.resolveNode(targetNodeId);
+    if (!target) {
+      return {
+        success: false,
+        errorCode: "NODE_NOT_FOUND",
+        errorMessage: `未找到目标节点 '${targetNodeId}'`,
+      };
+    }
+
+    const reference = this.resolveNode(referenceNodeId);
+    if (!reference) {
+      return {
+        success: false,
+        errorCode: "NODE_NOT_FOUND",
+        errorMessage: `未找到参考节点 '${referenceNodeId}'`,
+      };
+    }
+
+    // 计算两个节点的边界框
+    const targetBox = getBoundingBox(target);
+    const referenceBox = getBoundingBox(reference);
+
+    // 使用约束求解器计算新坐标
+    const result = solveAlignment(targetBox, referenceBox, relation, offset);
+
+    // 更新目标节点位置
+    return this.moveNode(targetNodeId, result.x, result.y);
   }
 
   /** 调整叠放顺序 */

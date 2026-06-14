@@ -12,7 +12,7 @@
 
 import Konva from "konva";
 import type { Node, Edge } from "@vdc/shared";
-import { CANVAS_DEFAULTS } from "@vdc/shared";
+import { CANVAS_DEFAULTS, GRID_COLS, GRID_ROWS } from "@vdc/shared";
 import type { CanvasStore } from "./store";
 
 // ─── 类型 ────────────────────────────────────────────────────
@@ -31,11 +31,13 @@ export interface RendererOptions {
 export class KonvaRenderer {
   private stage: Konva.Stage;
   private bgLayer: Konva.Layer;
+  private gridLayer: Konva.Layer;
   private edgeLayer: Konva.Layer;
   private nodeLayer: Konva.Layer;
   private bgRect: Konva.Rect;
   private store: CanvasStore;
   private unsubscribe: (() => void) | null = null;
+  private gridVisible: boolean = true;
 
   /** Store nodeId → Konva.Node 的映射 */
   private konvaNodeMap = new Map<string, Konva.Node>();
@@ -65,12 +67,14 @@ export class KonvaRenderer {
       height,
     });
 
-    // 三层：背景层 → 连线层 → 节点层（z-index 从低到高）
+    // 四层：背景层 → 网格层 → 连线层 → 节点层（z-index 从低到高）
     this.bgLayer = new Konva.Layer({ listening: false });
+    this.gridLayer = new Konva.Layer({ listening: false });
     this.edgeLayer = new Konva.Layer({ listening: false });
     this.nodeLayer = new Konva.Layer();
 
     this.stage.add(this.bgLayer);
+    this.stage.add(this.gridLayer);
     this.stage.add(this.edgeLayer);
     this.stage.add(this.nodeLayer);
 
@@ -84,6 +88,9 @@ export class KonvaRenderer {
       listening: false,
     });
     this.bgLayer.add(this.bgRect);
+
+    // 绘制 50x50 辅助网格
+    this.drawGrid(width, height);
 
     // 首次同步
     this.syncAll();
@@ -106,6 +113,24 @@ export class KonvaRenderer {
     this.bgRect.width(width);
     this.bgRect.height(height);
     this.bgLayer.batchDraw();
+
+    // 重绘网格
+    this.gridLayer.destroyChildren();
+    this.drawGrid(width, height);
+  }
+
+  /** 切换网格可见性 */
+  toggleGrid(): void {
+    this.gridVisible = !this.gridVisible;
+    this.gridLayer.visible(this.gridVisible);
+    this.gridLayer.batchDraw();
+  }
+
+  /** 设置网格可见性 */
+  setGridVisible(visible: boolean): void {
+    this.gridVisible = visible;
+    this.gridLayer.visible(visible);
+    this.gridLayer.batchDraw();
   }
 
   /** 销毁渲染器，清理资源 */
@@ -117,6 +142,54 @@ export class KonvaRenderer {
     this.konvaNodeMap.clear();
     this.konvaEdgeMap.clear();
     this.stage.destroy();
+  }
+
+  // ─── 网格绘制 ──────────────────────────────────────────────
+
+  /**
+   * 绘制 50x50 半透明辅助网格线
+   *
+   * 网格线颜色：rgba(0,0,0,0.08)（极淡灰色，不干扰主体内容）
+   * 每隔 5 格加深一次：rgba(0,0,0,0.15)（类似 Photoshop 网格）
+   */
+  private drawGrid(width: number, height: number): void {
+    const cellW = width / GRID_COLS;
+    const cellH = height / GRID_ROWS;
+
+    const GRID_COLOR = "rgba(0,0,0,0.08)";
+    const GRID_COLOR_MAJOR = "rgba(0,0,0,0.18)";
+    const GRID_STROKE_WIDTH = 0.5;
+    const GRID_STROKE_WIDTH_MAJOR = 1;
+
+    // 垂直线（x 方向）
+    for (let col = 0; col <= GRID_COLS; col++) {
+      const x = Math.round(col * cellW);
+      const isMajor = col % 5 === 0;
+
+      const line = new Konva.Line({
+        points: [x, 0, x, height],
+        stroke: isMajor ? GRID_COLOR_MAJOR : GRID_COLOR,
+        strokeWidth: isMajor ? GRID_STROKE_WIDTH_MAJOR : GRID_STROKE_WIDTH,
+        listening: false,
+      });
+      this.gridLayer.add(line);
+    }
+
+    // 水平线（y 方向）
+    for (let row = 0; row <= GRID_ROWS; row++) {
+      const y = Math.round(row * cellH);
+      const isMajor = row % 5 === 0;
+
+      const line = new Konva.Line({
+        points: [0, y, width, y],
+        stroke: isMajor ? GRID_COLOR_MAJOR : GRID_COLOR,
+        strokeWidth: isMajor ? GRID_STROKE_WIDTH_MAJOR : GRID_STROKE_WIDTH,
+        listening: false,
+      });
+      this.gridLayer.add(line);
+    }
+
+    this.gridLayer.batchDraw();
   }
 
   // ─── Store 变更处理 ────────────────────────────────────────
@@ -476,7 +549,6 @@ export class KonvaRenderer {
 
     img.onerror = () => {
       this.loadingImages.delete(imageUrl);
-      console.warn(`[KonvaRenderer] 图片加载失败: ${imageUrl}`);
 
       // 加载失败时显示错误占位
       const konvaNode = this.konvaNodeMap.get(nodeId);
@@ -573,7 +645,6 @@ export class KonvaRenderer {
     // 检查是否为 Konva.Image 类型
     const isKonvaImage = konvaNode instanceof Konva.Image;
     const isKonvaText = konvaNode instanceof Konva.Text;
-    const isKonvaRect = konvaNode instanceof Konva.Rect;
 
     // Store 节点是 image 类型
     if (storeNode.type === "image") {

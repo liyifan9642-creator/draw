@@ -6,10 +6,11 @@
  */
 
 import { useState, useCallback } from "react";
-import type { CanvasStore } from "@vdc/canvas-engine";
+import type { CanvasStore, AlignmentRelation } from "@vdc/canvas-engine";
 import type { Node } from "@vdc/shared";
 import { resolvePosition, setCanvasSize, generateImage } from "@vdc/voice-agent";
 import type { SpatialPosition, ImageStyle } from "@vdc/voice-agent";
+import { resolveGridCoordinate, isValidGridCoordinate } from "@vdc/shared";
 
 interface TextInputProps {
   store: CanvasStore;
@@ -96,6 +97,23 @@ function parseColor(text: string): string | null {
   return null;
 }
 
+/** 从文本中提取网格坐标 */
+function extractGridCoordinate(text: string): string | null {
+  const match = text.match(/x(\d{1,2})y(\d{1,2})/i);
+  if (!match) return null;
+  const coord = `x${match[1]}y${match[2]}`;
+  return isValidGridCoordinate(coord) ? coord : null;
+}
+
+/** 从文本中解析对齐关系 */
+function parseAlignmentRelation(text: string): AlignmentRelation | null {
+  if (text.includes("右侧") || text.includes("右边") || text.includes("right of") || text.includes("rightOf")) return "rightOf";
+  if (text.includes("左侧") || text.includes("左边") || text.includes("left of") || text.includes("leftOf")) return "leftOf";
+  if (text.includes("顶部对齐") || text.includes("上对齐") || text.includes("align top") || text.includes("alignTop")) return "alignTop";
+  if (text.includes("中心对齐") || text.includes("居中对齐") || text.includes("align center") || text.includes("alignCenter")) return "alignCenter";
+  return null;
+}
+
 /** 简化指令解析器 */
 function parseCommand(
   input: string,
@@ -107,6 +125,26 @@ function parseCommand(
   if (text.includes("撤销") || text.includes("undo")) {
     const stepsMatch = text.match(/(\d+)/);
     return { tool: "undo_action", params: { steps: stepsMatch ? parseInt(stepsMatch[1]) : 1 } };
+  }
+
+  // 对齐指令（V2.0）：如 "让蓝色圆形紧贴红色正方形的右侧"
+  if ((text.includes("紧贴") || text.includes("对齐") || text.includes("align")) && (text.includes("右侧") || text.includes("左侧") || text.includes("顶部") || text.includes("中心"))) {
+    const nodes = store.getNodes();
+    const relation = parseAlignmentRelation(text);
+    if (relation && nodes.length >= 2) {
+      // 取最后两个节点：最后一个为 target，倒数第二个为 reference
+      const target = nodes[nodes.length - 1];
+      const reference = nodes[nodes.length - 2];
+      return {
+        tool: "align_objects",
+        params: {
+          targetNodeId: target.id,
+          referenceNodeId: reference.id,
+          relation,
+          offset: 0,
+        },
+      };
+    }
   }
 
   // 重做
@@ -130,6 +168,7 @@ function parseCommand(
   if (text.includes("矩形") || text.includes("rect") || text.includes("正方形") || text.includes("长方形")) {
     const color = parseColor(text) ?? "#2196F3";
     const isSquare = text.includes("正方形");
+    const gridCoord = extractGridCoordinate(text);
     const position = parsePosition(text);
     const baseParams: Record<string, unknown> = {
       type: "rect",
@@ -140,7 +179,9 @@ function parseCommand(
       strokeWidth: 0,
       name: `矩形_${idCounter + 1}`,
     };
-    if (position) {
+    if (gridCoord) {
+      baseParams.gridCoordinate = gridCoord;
+    } else if (position) {
       baseParams.position = position;
     } else {
       baseParams.x = 400;
@@ -152,6 +193,7 @@ function parseCommand(
   // 画圆形
   if (text.includes("圆形") || text.includes("circle") || text.includes("圆")) {
     const color = parseColor(text) ?? "#4CAF50";
+    const gridCoord = extractGridCoordinate(text);
     const position = parsePosition(text);
     const baseParams: Record<string, unknown> = {
       type: "circle",
@@ -161,7 +203,9 @@ function parseCommand(
       strokeWidth: 0,
       name: `圆形_${idCounter + 1}`,
     };
-    if (position) {
+    if (gridCoord) {
+      baseParams.gridCoordinate = gridCoord;
+    } else if (position) {
       baseParams.position = position;
     } else {
       baseParams.x = 500;
@@ -173,6 +217,7 @@ function parseCommand(
   // 画三角形
   if (text.includes("三角形") || text.includes("triangle")) {
     const color = parseColor(text) ?? "#FF9800";
+    const gridCoord = extractGridCoordinate(text);
     const position = parsePosition(text);
     const baseParams: Record<string, unknown> = {
       type: "triangle",
@@ -182,7 +227,9 @@ function parseCommand(
       strokeWidth: 0,
       name: `三角形_${idCounter + 1}`,
     };
-    if (position) {
+    if (gridCoord) {
+      baseParams.gridCoordinate = gridCoord;
+    } else if (position) {
       baseParams.position = position;
     } else {
       baseParams.x = 500;
@@ -194,6 +241,7 @@ function parseCommand(
   // 画椭圆
   if (text.includes("椭圆") || text.includes("ellipse")) {
     const color = parseColor(text) ?? "#9C27B0";
+    const gridCoord = extractGridCoordinate(text);
     const position = parsePosition(text);
     const baseParams: Record<string, unknown> = {
       type: "ellipse",
@@ -204,7 +252,9 @@ function parseCommand(
       strokeWidth: 0,
       name: `椭圆_${idCounter + 1}`,
     };
-    if (position) {
+    if (gridCoord) {
+      baseParams.gridCoordinate = gridCoord;
+    } else if (position) {
       baseParams.position = position;
     } else {
       baseParams.x = 500;
@@ -310,10 +360,26 @@ function executeTool(
       const nodeWidth = (params.width as number) ?? ((params.radius as number) ? (params.radius as number) * 2 : 100);
       const nodeHeight = (params.height as number) ?? ((params.radius as number) ? (params.radius as number) * 2 : 100);
 
-      // 如果有 position 参数，解析为像素坐标
+      // 优先级：gridCoordinate > position > x/y
       let x: number;
       let y: number;
-      if (params.position) {
+      if (params.gridCoordinate) {
+        const resolved = resolveGridCoordinate(
+          params.gridCoordinate as string,
+          canvasWidth,
+          canvasHeight,
+          true
+        );
+        if (!resolved) {
+          return JSON.stringify({
+            success: false,
+            errorCode: "INVALID_PARAMS",
+            errorMessage: `无效的网格坐标: '${params.gridCoordinate}'`,
+          });
+        }
+        x = resolved.x - nodeWidth / 2;
+        y = resolved.y - nodeHeight / 2;
+      } else if (params.position) {
         const resolved = resolvePosition(params.position as SpatialPosition, nodeWidth, nodeHeight);
         x = resolved.x;
         y = resolved.y;
@@ -485,6 +551,17 @@ function executeTool(
       });
     }
 
+    case "align_objects": {
+      return JSON.stringify(
+        store.alignNode(
+          params.targetNodeId as string,
+          params.referenceNodeId as string,
+          params.relation as AlignmentRelation,
+          (params.offset as number) ?? 0
+        )
+      );
+    }
+
     case "query_canvas_state": {
       const nodes = store.getNodes();
       return JSON.stringify({
@@ -531,7 +608,7 @@ export function TextInput({ store, canvasWidth, canvasHeight, onLog }: TextInput
     const parsed = parseCommand(trimmed, store);
     if (!parsed) {
       onLog(`❓ 无法解析指令: "${trimmed}"`, "#FF9800");
-      onLog('  💡 试试: 在左上角画一个红色矩形 / 在右下角生成一张赛博朋克风格的猫的图片 / 背景改成浅蓝色 / 撤销', "#888");
+      onLog('  💡 试试: 在x10y10画一个红色正方形 / 画一个蓝色圆形在x25y25 / 紧贴红色正方形右侧 / 在左上角画一个矩形 / 撤销', "#888");
       setInput("");
       return;
     }
@@ -586,7 +663,7 @@ export function TextInput({ store, canvasWidth, canvasHeight, onLog }: TextInput
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder='输入指令，如 "在右下角生成一张赛博朋克风格的猫的图片"、"画一个红色矩形"、"撤销"'
+        placeholder='输入指令，如 "在x10y10画一个红色正方形"、"画一个蓝色圆形在x25y25"、"紧贴红色正方形右侧"、"撤销"'
         style={styles.input}
       />
       <button onClick={handleSubmit} style={styles.button}>

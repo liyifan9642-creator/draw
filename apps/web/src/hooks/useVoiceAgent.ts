@@ -80,17 +80,14 @@ export function useVoiceAgent({
       const conversation = await Conversation.startSession({
         agentId,
         clientTools: getCanvasTools(),
-        onConnect: ({ conversationId }) => {
-          console.log("[VoiceAgent] Connected:", conversationId);
+        onConnect: () => {
           setStatus("connected");
         },
-        onDisconnect: (details) => {
-          console.log("[VoiceAgent] Disconnected:", details);
+        onDisconnect: () => {
           setStatus("disconnected");
           conversationRef.current = null;
         },
-        onError: (message, ctx) => {
-          console.error("[VoiceAgent] Error:", message, ctx);
+        onError: (message) => {
           setError(message);
         },
         onModeChange: ({ mode: newMode }) => {
@@ -111,7 +108,6 @@ export function useVoiceAgent({
       conversationRef.current = conversation;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "未知错误";
-      console.error("[VoiceAgent] Failed to start:", msg);
       setError(msg);
       setStatus("disconnected");
     }
@@ -121,8 +117,8 @@ export function useVoiceAgent({
     if (!conversationRef.current) return;
     try {
       await conversationRef.current.endSession();
-    } catch (err) {
-      console.warn("[VoiceAgent] Error stopping:", err);
+    } catch {
+      // 静默处理断开错误
     }
     conversationRef.current = null;
     setStatus("disconnected");

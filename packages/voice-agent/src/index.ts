@@ -5,6 +5,7 @@
  * - 工具注册与调用分发（Client Tools → CanvasStore 方法映射）
  * - ElevenLabs Conversational AI SDK 集成
  * - 语音流的开启/关闭控制
+ * - V2.0: 网格坐标系统 + 几何约束对齐
  */
 
 export { initTools, getCanvasTools, setCanvasSize, getCanvasSize, resolvePosition } from "./tools";
@@ -12,6 +13,7 @@ export type { AgentStatus, AgentMode, AgentConfig, ToolHandler } from "./types";
 export type { SpatialPosition } from "./tools";
 export { generateImage } from "./imageService";
 export type { ImageStyle, ImageGenerationRequest, ImageGenerationResult } from "./imageService";
+export type { AlignmentRelation } from "@vdc/canvas-engine";
 
 // 单独导出各工具函数，便于单元测试
 export {
@@ -26,5 +28,6 @@ export {
   add_text,
   reorder_node,
   move_node,
+  align_objects,
   query_canvas_state,
 } from "./tools";

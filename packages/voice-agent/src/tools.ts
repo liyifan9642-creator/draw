@@ -13,9 +13,10 @@
 
 import type { CanvasStore } from "@vdc/canvas-engine";
 import type { Node } from "@vdc/shared";
-import { CANVAS_DEFAULTS } from "@vdc/shared";
+import { CANVAS_DEFAULTS, resolveGridCoordinate } from "@vdc/shared";
 import { generateImage } from "./imageService";
 import type { ImageStyle } from "./imageService";
+import type { AlignmentRelation } from "@vdc/canvas-engine";
 
 let _store: CanvasStore | null = null;
 let _idCounter = 0;
@@ -115,17 +116,19 @@ export function set_canvas_background(params: { color: string }): string {
  * 创建几何图形节点
  * 对应 PRD Tool 1: generate_shape
  *
- * 支持两种定位模式：
- * 1. 绝对坐标：直接传入 x, y
+ * 支持三种定位模式（优先级从高到低）：
+ * 1. gridCoordinate：网格坐标（如 "x10y25"），前端按比例换算为像素
  * 2. 空间方位：传入 position 枚举，前端根据画布尺寸动态计算 x, y
+ * 3. 绝对坐标：直接传入 x, y（像素）
  *
- * 当 LLM 输出 position 时，x 和 y 应省略；前端拦截 position 并解析为像素坐标。
+ * V2.0 新增 gridCoordinate，突破 LLM 的"二维空间推理盲区"。
  */
 export function generate_shape(params: {
   type: string;
   x?: number;
   y?: number;
   position?: SpatialPosition;
+  gridCoordinate?: string;
   width?: number;
   height?: number;
   radius?: number;
@@ -143,11 +146,29 @@ export function generate_shape(params: {
   const nodeWidth = params.width ?? (params.radius ? params.radius * 2 : 100);
   const nodeHeight = params.height ?? (params.radius ? params.radius * 2 : 100);
 
-  // 优先使用 position 枚举解析坐标，否则使用 x/y 绝对坐标
+  // 优先级：gridCoordinate > position > x/y 绝对坐标
   let x: number;
   let y: number;
 
-  if (params.position) {
+  if (params.gridCoordinate) {
+    // V2.0: 网格坐标 → 像素坐标（网格中心对齐）
+    const resolved = resolveGridCoordinate(
+      params.gridCoordinate,
+      _canvasWidth,
+      _canvasHeight,
+      true
+    );
+    if (!resolved) {
+      return JSON.stringify({
+        success: false,
+        errorCode: "INVALID_PARAMS",
+        errorMessage: `无效的网格坐标: '${params.gridCoordinate}'，格式应为 x{1-50}y{1-50}，如 x25y25`,
+      });
+    }
+    // 图形以网格中心为锚点放置，需要偏移到左上角
+    x = resolved.x - nodeWidth / 2;
+    y = resolved.y - nodeHeight / 2;
+  } else if (params.position) {
     const resolved = resolvePosition(params.position, nodeWidth, nodeHeight);
     x = resolved.x;
     y = resolved.y;
@@ -445,6 +466,34 @@ export function generate_image(params: {
 // ─── 工具注册表 ──────────────────────────────────────────────
 
 /**
+ * 几何约束对齐
+ *
+ * V2.0 新增工具：使用 Kiwi.js 约束求解器处理复杂的空间对齐关系。
+ * LLM 只需声明语义关系（如"紧贴右侧"），前端精确计算像素坐标。
+ *
+ * 支持的 relation 枚举值：
+ * - leftOf:      target 的右边缘紧贴 reference 的左边缘
+ * - rightOf:     target 的左边缘紧贴 reference 的右边缘
+ * - alignTop:    target 与 reference 顶部对齐
+ * - alignCenter: target 与 reference 中心对齐
+ */
+export function align_objects(params: {
+  targetNodeId: string;
+  referenceNodeId: string;
+  relation: AlignmentRelation;
+  offset?: number;
+}): string {
+  const store = getStore();
+  const result = store.alignNode(
+    params.targetNodeId,
+    params.referenceNodeId,
+    params.relation,
+    params.offset ?? 0
+  );
+  return JSON.stringify(result);
+}
+
+/**
  * 导出所有工具的映射表，供 ElevenLabs clientTools 配置使用
  */
 export function getCanvasTools(): Record<string, (params: any) => string> {
@@ -460,6 +509,7 @@ export function getCanvasTools(): Record<string, (params: any) => string> {
     add_text,
     reorder_node,
     move_node,
+    align_objects,
     query_canvas_state,
   };
 }
