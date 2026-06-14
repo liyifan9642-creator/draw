@@ -11,71 +11,220 @@ import type { TemplateParams, TemplateResult } from "./templates";
 
 // ─── 动物 ─────────────────────────────────────────────────────
 
-/** 猫 — 卡通风格，坐着的姿态 */
+/** 猫 — 卡通风格，支持参数化 + 细粒度控制 */
 export function cat(p: TemplateParams): TemplateResult {
   const s = (p.size ?? 200) / 500;
+  const bw = p.bodyWidth ?? 1.0;
+  const hs = p.headSize ?? 1.0;
+  const es = p.earSize ?? 1.0;
+  const tl = p.tailLength ?? 1.0;
+  const facing = p.facing ?? "front";
+  const mirror = facing === "left" ? -1 : 1;
+  const eyeShape = p.eyeShape ?? "round";
+  const mouthStyle = p.mouthStyle ?? "smile";
+  const showWhiskers = p.whiskers ?? true;
+
+  // 眼睛根据 eyeShape 生成
+  let leftEye: string, rightEye: string;
+  const eyeY = 120;
+  const eyeOffset = 30 * mirror;
+
+  if (eyeShape === "slit") {
+    // 竖瞳（猫的特征）
+    leftEye = `M${250 - eyeOffset},${eyeY - 10} C${250 - eyeOffset - 5},${eyeY - 15} ${250 - eyeOffset + 5},${eyeY - 15} ${250 - eyeOffset},${eyeY - 10} M${250 - eyeOffset},${eyeY + 5} C${250 - eyeOffset - 5},${eyeY + 10} ${250 - eyeOffset + 5},${eyeY + 10} ${250 - eyeOffset},${eyeY + 5}`;
+    rightEye = `M${250 + eyeOffset},${eyeY - 10} C${250 + eyeOffset - 5},${eyeY - 15} ${250 + eyeOffset + 5},${eyeY - 15} ${250 + eyeOffset},${eyeY - 10} M${250 + eyeOffset},${eyeY + 5} C${250 + eyeOffset - 5},${eyeY + 10} ${250 + eyeOffset + 5},${eyeY + 10} ${250 + eyeOffset},${eyeY + 5}`;
+  } else if (eyeShape === "closed") {
+    // 闭眼
+    leftEye = `M${250 - eyeOffset - 10},${eyeY} C${250 - eyeOffset - 5},${eyeY - 8} ${250 - eyeOffset + 5},${eyeY - 8} ${250 - eyeOffset + 10},${eyeY}`;
+    rightEye = `M${250 + eyeOffset - 10},${eyeY} C${250 + eyeOffset - 5},${eyeY - 8} ${250 + eyeOffset + 5},${eyeY - 8} ${250 + eyeOffset + 10},${eyeY}`;
+  } else if (eyeShape === "happy") {
+    // 笑眼（弧线）
+    leftEye = `M${250 - eyeOffset - 10},${eyeY - 5} C${250 - eyeOffset - 5},${eyeY - 15} ${250 - eyeOffset + 5},${eyeY - 15} ${250 - eyeOffset + 10},${eyeY - 5}`;
+    rightEye = `M${250 + eyeOffset - 10},${eyeY - 5} C${250 + eyeOffset - 5},${eyeY - 15} ${250 + eyeOffset + 5},${eyeY - 15} ${250 + eyeOffset + 10},${eyeY - 5}`;
+  } else {
+    // 圆眼（默认）
+    leftEye = `M${250 - eyeOffset},${eyeY} C${250 - eyeOffset - 12},${eyeY - 12} ${250 - eyeOffset + 12},${eyeY - 12} ${250 - eyeOffset},${eyeY} C${250 - eyeOffset + 12},${eyeY + 12} ${250 - eyeOffset - 12},${eyeY + 12} ${250 - eyeOffset},${eyeY}`;
+    rightEye = `M${250 + eyeOffset},${eyeY} C${250 + eyeOffset - 12},${eyeY - 12} ${250 + eyeOffset + 12},${eyeY - 12} ${250 + eyeOffset},${eyeY} C${250 + eyeOffset + 12},${eyeY + 12} ${250 + eyeOffset - 12},${eyeY + 12} ${250 + eyeOffset},${eyeY}`;
+  }
+
+  // 嘴巴根据 mouthStyle 生成
+  let mouth: string;
+  const mouthY = 155;
+  if (mouthStyle === "smile") {
+    mouth = `M240,${mouthY} C245,${mouthY + 8} 255,${mouthY + 8} 260,${mouthY}`;
+  } else if (mouthStyle === "open") {
+    mouth = `M240,${mouthY} C240,${mouthY + 15} 260,${mouthY + 15} 260,${mouthY} M245,${mouthY + 5} C248,${mouthY + 12} 252,${mouthY + 12} 255,${mouthY + 5}`;
+  } else if (mouthStyle === "frown") {
+    mouth = `M240,${mouthY + 5} C245,${mouthY - 3} 255,${mouthY - 3} 260,${mouthY + 5}`;
+  } else {
+    mouth = `M240,${mouthY} L260,${mouthY}`;
+  }
+
+  // 胡须
+  const whiskerLeft = showWhiskers ? `M230,148 L170,138 M230,152 L170,158 M230,156 L170,168` : "";
+  const whiskerRight = showWhiskers ? `M270,148 L330,138 M270,152 L330,158 M270,156 L330,168` : "";
+
+  // 肉垫（爪子细节）
+  const pawPad = `M${250 - 15 * bw},400 C${250 - 20 * bw},405 ${250 - 10 * bw},410 ${250 - 5 * bw},405 M${250 + 5 * bw},400 C${250 + 10 * bw},405 ${250 + 20 * bw},410 ${250 + 15 * bw},405`;
+
   const d = [
     // 身体
-    "M250,420 C180,420 140,370 140,310 C140,250 180,200 250,200 C320,200 360,250 360,310 C360,370 320,420 250,420",
+    `M250,420 C${250 - 110 * bw},420 ${250 - 110 * bw},370 ${250 - 110 * bw},310 C${250 - 110 * bw},250 ${250 - 70 * bw},200 250,200 C${250 + 70 * bw},200 ${250 + 110 * bw},250 ${250 + 110 * bw},310 C${250 + 110 * bw},370 ${250 + 70 * bw},420 250,420`,
+    // 肚皮（白色区域）
+    `M250,280 C${250 - 40 * bw},280 ${250 - 50 * bw},320 ${250 - 50 * bw},350 C${250 - 50 * bw},380 ${250 - 30 * bw},400 250,400 C${250 + 30 * bw},400 ${250 + 50 * bw},380 ${250 + 50 * bw},350 C${250 + 50 * bw},320 ${250 + 40 * bw},280 250,280`,
     // 头
-    "M250,200 C200,200 165,170 165,130 C165,90 200,60 250,60 C300,60 335,90 335,130 C335,170 300,200 250,200",
+    `M250,200 C${250 - 50 * hs},200 ${250 - 85 * hs},170 ${250 - 85 * hs},130 C${250 - 85 * hs},${90 - 40 * (hs - 1)} ${250 - 50 * hs},${60 - 30 * (hs - 1)} 250,${60 - 30 * (hs - 1)} C${250 + 50 * hs},${60 - 30 * (hs - 1)} ${250 + 85 * hs},${90 - 40 * (hs - 1)} ${250 + 85 * hs},130 C${250 + 85 * hs},170 ${250 + 50 * hs},200 250,200`,
     // 左耳
-    "M185,95 L160,40 L210,80",
+    `M${250 - 65 * es},${95 - 20 * (es - 1)} L${250 - 90 * es},${40 - 30 * (es - 1)} L${250 - 40 * es},${80 - 10 * (es - 1)}`,
+    // 左耳内（粉色）
+    `M${250 - 60 * es},${90 - 15 * (es - 1)} L${250 - 80 * es},${50 - 25 * (es - 1)} L${250 - 45 * es},${80 - 10 * (es - 1)}`,
     // 右耳
-    "M315,95 L340,40 L290,80",
-    // 左眼
-    "M220,120 C215,110 225,100 235,110 C240,115 235,125 225,125 C220,125 218,122 220,120",
-    // 右眼
-    "M280,120 C275,110 285,100 295,110 C300,115 295,125 285,125 C280,125 278,122 280,120",
+    `M${250 + 65 * es},${95 - 20 * (es - 1)} L${250 + 90 * es},${40 - 30 * (es - 1)} L${250 + 40 * es},${80 - 10 * (es - 1)}`,
+    // 右耳内
+    `M${250 + 60 * es},${90 - 15 * (es - 1)} L${250 + 80 * es},${50 - 25 * (es - 1)} L${250 + 45 * es},${80 - 10 * (es - 1)}`,
+    // 眼睛
+    leftEye, rightEye,
+    // 瞳孔（非闭眼时显示）
+    eyeShape !== "closed" ? `M${250 - eyeOffset},${eyeY} C${250 - eyeOffset - 4},${eyeY - 4} ${250 - eyeOffset + 4},${eyeY - 4} ${250 - eyeOffset},${eyeY}` : "",
+    eyeShape !== "closed" ? `M${250 + eyeOffset},${eyeY} C${250 + eyeOffset - 4},${eyeY - 4} ${250 + eyeOffset + 4},${eyeY - 4} ${250 + eyeOffset},${eyeY}` : "",
     // 鼻子
-    "M245,145 L250,150 L255,145",
-    // 嘴
-    "M240,155 C245,160 255,160 260,155",
-    // 胡须左
-    "M230,148 L180,140 M230,152 L180,155",
-    // 胡须右
-    "M270,148 L320,140 M270,152 L320,155",
+    `M245,145 L250,150 L255,145`,
+    // 嘴巴
+    mouth,
+    // 胡须
+    whiskerLeft, whiskerRight,
+    // 前爪
+    `M${250 - 60 * bw},400 C${250 - 65 * bw},410 ${250 - 55 * bw},420 ${250 - 50 * bw},420 L${250 - 30 * bw},420 C${250 - 25 * bw},420 ${250 - 25 * bw},410 ${250 - 30 * bw},400`,
+    `M${250 + 30 * bw},400 C${250 + 25 * bw},410 ${250 + 25 * bw},420 ${250 + 30 * bw},420 L${250 + 50 * bw},420 C${250 + 55 * bw},420 ${250 + 65 * bw},410 ${250 + 60 * bw},400`,
+    // 肉垫
+    pawPad,
     // 尾巴
-    "M360,350 C400,340 420,300 410,260 C405,240 390,230 380,240",
-  ].join(" ");
+    `M${250 + 110 * bw},350 C${250 + 150 * bw},${340 - 10 * (tl - 1)} ${250 + 170 * bw},${300 - 20 * (tl - 1)} ${250 + 160 * bw},${260 - 30 * (tl - 1)} C${250 + 155 * bw},${240 - 20 * (tl - 1)} ${250 + 140 * bw},${230 - 10 * (tl - 1)} ${250 + 130 * bw},240`,
+  ].filter(Boolean).join(" ");
 
   return {
     name: "猫", pathData: d,
     fill: p.fill ?? "#FFD54F", stroke: p.stroke ?? "#5D4037", strokeWidth: p.strokeWidth ?? 2,
     x: p.cx - 250 * s, y: p.cy - 250 * s, width: 500 * s, height: 500 * s, rotation: p.rotation ?? 0,
+    // 默认渐变：从浅黄到深黄，增加立体感
+    fillGradient: p.fill ? undefined : {
+      type: "linear" as const,
+      stops: [
+        { offset: 0, color: "#FFF176" },
+        { offset: 0.5, color: "#FFD54F" },
+        { offset: 1, color: "#FFB300" },
+      ],
+      startPoint: { x: 0, y: 0 },
+      endPoint: { x: 0, y: 1 },
+    },
+    // 默认阴影
+    shadow: {
+      color: "rgba(0,0,0,0.2)",
+      blur: 8,
+      offsetX: 3,
+      offsetY: 3,
+    },
   };
 }
 
-/** 狗 — 卡通风格，坐着的姿态 */
+/** 狗 — 卡通风格，支持参数化 + 细粒度控制 */
 export function dog(p: TemplateParams): TemplateResult {
   const s = (p.size ?? 200) / 500;
+  const bw = p.bodyWidth ?? 1.0;
+  const hs = p.headSize ?? 1.0;
+  const es = p.earSize ?? 1.0;
+  const tl = p.tailLength ?? 1.0;
+  const eyeShape = p.eyeShape ?? "round";
+  const tongueOut = p.tongueOut ?? true;
+  const hasSpots = p.hasSpots ?? false;
+  const tailStyle = p.tailStyle ?? "up";
+
+  // 眼睛
+  let leftEye: string, rightEye: string;
+  if (eyeShape === "happy") {
+    leftEye = `M210,85 C215,75 225,75 230,85`;
+    rightEye = `M270,85 C275,75 285,75 290,85`;
+  } else if (eyeShape === "closed") {
+    leftEye = `M210,90 C215,82 225,82 230,90`;
+    rightEye = `M270,90 C275,82 285,82 290,90`;
+  } else {
+    leftEye = `M215,90 C210,80 220,70 230,80 C235,85 230,95 220,95`;
+    rightEye = `M285,90 C280,80 290,70 300,80 C305,85 300,95 290,95`;
+  }
+
+  // 舌头
+  const tongue = tongueOut ? `M248,140 C245,160 255,160 252,140 M248,145 C247,155 253,155 252,145` : "";
+
+  // 斑点
+  const spots = hasSpots ? `M${250 - 40 * bw},280 C${250 - 50 * bw},270 ${250 - 30 * bw},260 ${250 - 20 * bw},270 M${250 + 30 * bw},320 C${250 + 20 * bw},310 ${250 + 40 * bw},300 ${250 + 50 * bw},310` : "";
+
+  // 尾巴姿态
+  let tail: string;
+  if (tailStyle === "curly") {
+    tail = `M${250 + 130 * bw},300 C${250 + 160 * bw},280 ${250 + 180 * bw},260 ${250 + 170 * bw},240 C${250 + 160 * bw},220 ${250 + 140 * bw},230 ${250 + 150 * bw},250`;
+  } else if (tailStyle === "down") {
+    tail = `M${250 + 130 * bw},300 C${250 + 150 * bw},320 ${250 + 160 * bw},340 ${250 + 150 * bw},360`;
+  } else {
+    tail = `M${250 + 130 * bw},300 C${250 + 160 * bw},${280 - 10 * (tl - 1)} ${250 + 180 * bw},${250 - 20 * (tl - 1)} ${250 + 170 * bw},${220 - 30 * (tl - 1)}`;
+  }
+
+  // 爪子细节
+  const pawDetail = `M${250 - 60 * bw},430 C${250 - 65 * bw},440 ${250 - 55 * bw},450 ${250 - 50 * bw},450 L${250 - 30 * bw},450 C${250 - 25 * bw},450 ${250 - 25 * bw},440 ${250 - 30 * bw},430 M${250 + 30 * bw},430 C${250 + 25 * bw},440 ${250 + 25 * bw},450 ${250 + 30 * bw},450 L${250 + 50 * bw},450 C${250 + 55 * bw},450 ${250 + 65 * bw},440 ${250 + 60 * bw},430`;
+
   const d = [
     // 身体
-    "M250,430 C170,430 120,370 120,300 C120,230 170,180 250,180 C330,180 380,230 380,300 C380,370 330,430 250,430",
+    `M250,430 C${250 - 80 * bw},430 ${250 - 130 * bw},370 ${250 - 130 * bw},300 C${250 - 130 * bw},230 ${250 - 80 * bw},180 250,180 C${250 + 80 * bw},180 ${250 + 130 * bw},230 ${250 + 130 * bw},300 C${250 + 130 * bw},370 ${250 + 80 * bw},430 250,430`,
+    // 肚皮
+    `M250,280 C${250 - 50 * bw},280 ${250 - 70 * bw},320 ${250 - 70 * bw},350 C${250 - 70 * bw},380 ${250 - 40 * bw},410 250,410 C${250 + 40 * bw},410 ${250 + 70 * bw},380 ${250 + 70 * bw},350 C${250 + 70 * bw},320 ${250 + 50 * bw},280 250,280`,
     // 头
-    "M250,180 C190,180 150,140 150,100 C150,60 190,30 250,30 C310,30 350,60 350,100 C350,140 310,180 250,180",
-    // 左耳（下垂）
-    "M170,80 C140,90 110,130 120,170 C125,185 145,180 160,160",
-    // 右耳（下垂）
-    "M330,80 C360,90 390,130 380,170 C375,185 355,180 340,160",
-    // 左眼
-    "M215,90 C210,80 220,70 230,80 C235,85 230,95 220,95",
-    // 右眼
-    "M285,90 C280,80 290,70 300,80 C305,85 300,95 290,95",
+    `M250,180 C${250 - 60 * hs},180 ${250 - 100 * hs},140 ${250 - 100 * hs},100 C${250 - 100 * hs},60 ${250 - 60 * hs},30 250,30 C${250 + 60 * hs},30 ${250 + 100 * hs},60 ${250 + 100 * hs},100 C${250 + 100 * hs},140 ${250 + 60 * hs},180 250,180`,
+    // 口鼻区域
+    `M${250 - 40 * hs},120 C${250 - 50 * hs},110 ${250 - 50 * hs},140 ${250 - 40 * hs},150 C${250 - 20 * hs},160 ${250 + 20 * hs},160 ${250 + 40 * hs},150 C${250 + 50 * hs},140 ${250 + 50 * hs},110 ${250 + 40 * hs},120`,
+    // 左耳
+    `M${250 - 80 * es},80 C${250 - 110 * es},90 ${250 - 140 * es},130 ${250 - 130 * es},170 C${250 - 125 * es},185 ${250 - 105 * es},180 ${250 - 90 * es},160`,
+    // 右耳
+    `M${250 + 80 * es},80 C${250 + 110 * es},90 ${250 + 140 * es},130 ${250 + 130 * es},170 C${250 + 125 * es},185 ${250 + 105 * es},180 ${250 + 90 * es},160`,
+    // 眼睛
+    leftEye, rightEye,
+    // 眼球（非闭眼时）
+    eyeShape !== "closed" ? `M220,88 C218,84 222,84 220,88` : "",
+    eyeShape !== "closed" ? `M280,88 C278,84 282,84 280,88` : "",
     // 鼻子
-    "M240,115 L250,125 L260,115",
+    `M240,125 L250,135 L260,125 C255,130 245,130 240,125`,
     // 嘴
-    "M235,130 C240,140 260,140 265,130",
+    `M235,140 C240,150 260,150 265,140`,
     // 舌头
-    "M248,140 C245,155 255,155 252,140",
+    tongue,
+    // 斑点
+    spots,
+    // 前爪
+    pawDetail,
     // 尾巴
-    "M380,300 C410,280 430,250 420,220",
-  ].join(" ");
+    tail,
+  ].filter(Boolean).join(" ");
 
   return {
     name: "狗", pathData: d,
     fill: p.fill ?? "#A1887F", stroke: p.stroke ?? "#4E342E", strokeWidth: p.strokeWidth ?? 2,
     x: p.cx - 250 * s, y: p.cy - 250 * s, width: 500 * s, height: 500 * s, rotation: p.rotation ?? 0,
+    // 默认渐变：从浅棕到深棕
+    fillGradient: p.fill ? undefined : {
+      type: "linear" as const,
+      stops: [
+        { offset: 0, color: "#BCAAA4" },
+        { offset: 0.5, color: "#A1887F" },
+        { offset: 1, color: "#795548" },
+      ],
+      startPoint: { x: 0, y: 0 },
+      endPoint: { x: 0, y: 1 },
+    },
+    // 默认阴影
+    shadow: {
+      color: "rgba(0,0,0,0.2)",
+      blur: 8,
+      offsetX: 3,
+      offsetY: 3,
+    },
   };
 }
 
@@ -202,28 +351,49 @@ export function butterfly(p: TemplateParams): TemplateResult {
 
 // ─── 植物 ─────────────────────────────────────────────────────
 
-/** 树 — 阔叶树 */
+/** 树 — 阔叶树，支持参数化 */
 export function tree(p: TemplateParams): TemplateResult {
   const s = (p.size ?? 200) / 500;
+  const cs = p.canopySize ?? 1.0;  // 树冠大小
+  const tw = p.trunkWidth ?? 1.0;  // 树干粗细
+
   const d = [
-    // 树干
-    "M230,450 L230,280 L270,280 L270,450",
-    // 树冠
-    "M250,280 C180,270 100,230 100,170 C100,100 160,50 250,40 C340,50 400,100 400,170 C400,230 320,270 250,280",
+    // 树干（根据 trunkWidth 调整粗细）
+    `M${250 - 20 * tw},450 L${250 - 20 * tw},280 L${250 + 20 * tw},280 L${250 + 20 * tw},450`,
+    // 树冠（根据 canopySize 调整大小）
+    `M250,280 C${250 - 70 * cs},270 ${250 - 150 * cs},230 ${250 - 150 * cs},170 C${250 - 150 * cs},${100 - 30 * (cs - 1)} ${250 - 90 * cs},${50 - 20 * (cs - 1)} 250,${40 - 20 * (cs - 1)} C${250 + 90 * cs},${50 - 20 * (cs - 1)} ${250 + 150 * cs},${100 - 30 * (cs - 1)} ${250 + 150 * cs},170 C${250 + 150 * cs},230 ${250 + 70 * cs},270 250,280`,
     // 树枝
-    "M230,350 C200,340 170,350 160,370",
-    "M270,330 C300,320 330,330 340,350",
+    `M${250 - 20 * tw},350 C${250 - 50 * tw},340 ${250 - 80 * tw},350 ${250 - 90 * tw},370`,
+    `M${250 + 20 * tw},330 C${250 + 50 * tw},320 ${250 + 80 * tw},330 ${250 + 90 * tw},350`,
     // 树叶纹理
-    "M180,150 C190,140 210,140 220,150",
-    "M280,150 C290,140 310,140 320,150",
-    "M200,200 C210,190 230,190 240,200",
-    "M260,200 C270,190 290,190 300,200",
+    `M${250 - 70 * cs},150 C${250 - 60 * cs},140 ${250 - 40 * cs},140 ${250 - 30 * cs},150`,
+    `M${250 + 30 * cs},150 C${250 + 40 * cs},140 ${250 + 60 * cs},140 ${250 + 70 * cs},150`,
+    `M${250 - 50 * cs},200 C${250 - 40 * cs},190 ${250 - 20 * cs},190 ${250 - 10 * cs},200`,
+    `M${250 + 10 * cs},200 C${250 + 20 * cs},190 ${250 + 40 * cs},190 ${250 + 50 * cs},200`,
   ].join(" ");
 
   return {
     name: "树", pathData: d,
     fill: p.fill ?? "#66BB6A", stroke: p.stroke ?? "#2E7D32", strokeWidth: p.strokeWidth ?? 2,
     x: p.cx - 250 * s, y: p.cy - 250 * s, width: 500 * s, height: 500 * s, rotation: p.rotation ?? 0,
+    // 默认渐变：从浅绿到深绿
+    fillGradient: p.fill ? undefined : {
+      type: "linear" as const,
+      stops: [
+        { offset: 0, color: "#81C784" },
+        { offset: 0.5, color: "#66BB6A" },
+        { offset: 1, color: "#388E3C" },
+      ],
+      startPoint: { x: 0, y: 0 },
+      endPoint: { x: 0, y: 1 },
+    },
+    // 默认阴影
+    shadow: {
+      color: "rgba(0,0,0,0.25)",
+      blur: 10,
+      offsetX: 4,
+      offsetY: 4,
+    },
   };
 }
 
@@ -327,28 +497,56 @@ export function mountain(p: TemplateParams): TemplateResult {
 
 // ─── 建筑 ─────────────────────────────────────────────────────
 
-/** 房子 */
+/** 房子 — 支持参数化 */
 export function house(p: TemplateParams): TemplateResult {
   const s = (p.size ?? 200) / 500;
+  const rh = p.roofHeight ?? 1.0;   // 屋顶高度
+  const ds = p.doorSize ?? 1.0;      // 门大小
+  const bw = p.bodyWidth ?? 1.0;     // 房子宽度
+
+  const wallLeft = 250 - 130 * bw;
+  const wallRight = 250 + 130 * bw;
+  const roofTop = 250 - 150 * rh;
+  const doorWidth = 30 * ds;
+  const doorHeight = 110 * ds;
+
   const d = [
     // 墙壁
-    "M120,450 L120,250 L380,250 L380,450",
+    `M${wallLeft},450 L${wallLeft},250 L${wallRight},250 L${wallRight},450`,
     // 屋顶
-    "M100,250 L250,100 L400,250",
+    `M${wallLeft - 20},250 L250,${roofTop} L${wallRight + 20},250`,
     // 门
-    "M220,450 L220,340 L280,340 L280,450",
+    `M${250 - doorWidth},450 L${250 - doorWidth},${450 - doorHeight} L${250 + doorWidth},${450 - doorHeight} L${250 + doorWidth},450`,
     // 左窗
-    "M150,300 L150,360 L200,360 L200,300 M175,300 L175,360 M150,330 L200,330",
+    `M${wallLeft + 30},300 L${wallLeft + 30},360 L${wallLeft + 80},360 L${wallLeft + 80},300 M${wallLeft + 55},300 L${wallLeft + 55},360 M${wallLeft + 30},330 L${wallLeft + 80},330`,
     // 右窗
-    "M300,300 L300,360 L350,360 L350,300 M325,300 L325,360 M300,330 L350,330",
+    `M${wallRight - 80},300 L${wallRight - 80},360 L${wallRight - 30},360 L${wallRight - 30},300 M${wallRight - 55},300 L${wallRight - 55},360 M${wallRight - 80},330 L${wallRight - 30},330`,
     // 烟囱
-    "M320,180 L320,120 L350,120 L350,200",
+    `M${wallRight - 60},${roofTop + 60} L${wallRight - 60},${roofTop} L${wallRight - 30},${roofTop} L${wallRight - 30},${roofTop + 80}`,
   ].join(" ");
 
   return {
     name: "房子", pathData: d,
     fill: p.fill ?? "#FFCC80", stroke: p.stroke ?? "#5D4037", strokeWidth: p.strokeWidth ?? 2,
     x: p.cx - 250 * s, y: p.cy - 250 * s, width: 500 * s, height: 500 * s, rotation: p.rotation ?? 0,
+    // 默认渐变：从浅橙到深橙
+    fillGradient: p.fill ? undefined : {
+      type: "linear" as const,
+      stops: [
+        { offset: 0, color: "#FFE0B2" },
+        { offset: 0.5, color: "#FFCC80" },
+        { offset: 1, color: "#FFA726" },
+      ],
+      startPoint: { x: 0, y: 0 },
+      endPoint: { x: 0, y: 1 },
+    },
+    // 默认阴影
+    shadow: {
+      color: "rgba(0,0,0,0.2)",
+      blur: 10,
+      offsetX: 4,
+      offsetY: 4,
+    },
   };
 }
 
@@ -486,29 +684,115 @@ export function coffee_cup(p: TemplateParams): TemplateResult {
 
 // ─── 人物 ─────────────────────────────────────────────────────
 
-/** 人物 — 简笔画 */
+/** 人物 — 简笔画，支持参数化 + 表情/发型/配饰 */
 export function person(p: TemplateParams): TemplateResult {
   const s = (p.size ?? 200) / 500;
+  const hs = p.headSize ?? 1.0;
+  const bw = p.bodyWidth ?? 1.0;
+  const bl = p.bodyHeight ?? 1.0;
+  const expression = p.expression ?? "neutral";
+  const hairStyle = p.hairStyle ?? "short";
+  const accessories = p.accessories ?? "none";
+
+  const headR = 50 * hs;
+  const bodyLen = 140 * bl;
+  const shoulderW = 40 * bw;
+  const headTop = 80 - headR * 0.6;
+  const headCenter = 130;
+  const neckY = 180;
+
+  // 眼睛根据表情变化
+  let leftEye: string, rightEye: string;
+  const eyeY = 125 - 5 * hs;
+  const eyeL = 250 - 15 * hs;
+  const eyeR = 250 + 15 * hs;
+
+  if (expression === "happy") {
+    leftEye = `M${eyeL - 8},${eyeY} C${eyeL - 4},${eyeY - 10} ${eyeL + 4},${eyeY - 10} ${eyeL + 8},${eyeY}`;
+    rightEye = `M${eyeR - 8},${eyeY} C${eyeR - 4},${eyeY - 10} ${eyeR + 4},${eyeY - 10} ${eyeR + 8},${eyeY}`;
+  } else if (expression === "sad") {
+    leftEye = `M${eyeL - 8},${eyeY - 5} C${eyeL - 4},${eyeY + 5} ${eyeL + 4},${eyeY + 5} ${eyeL + 8},${eyeY - 5}`;
+    rightEye = `M${eyeR - 8},${eyeY - 5} C${eyeR - 4},${eyeY + 5} ${eyeR + 4},${eyeY + 5} ${eyeR + 8},${eyeY - 5}`;
+  } else if (expression === "surprised") {
+    leftEye = `M${eyeL},${eyeY} C${eyeL - 10},${eyeY - 10} ${eyeL + 10},${eyeY - 10} ${eyeL},${eyeY} C${eyeL + 10},${eyeY + 10} ${eyeL - 10},${eyeY + 10} ${eyeL},${eyeY}`;
+    rightEye = `M${eyeR},${eyeY} C${eyeR - 10},${eyeY - 10} ${eyeR + 10},${eyeY - 10} ${eyeR},${eyeY} C${eyeR + 10},${eyeY + 10} ${eyeR - 10},${eyeY + 10} ${eyeR},${eyeY}`;
+  } else if (expression === "angry") {
+    leftEye = `M${eyeL - 8},${eyeY - 5} L${eyeL + 8},${eyeY} M${eyeL - 8},${eyeY} L${eyeL + 8},${eyeY - 5}`;
+    rightEye = `M${eyeR - 8},${eyeY} L${eyeR + 8},${eyeY - 5} M${eyeR - 8},${eyeY - 5} L${eyeR + 8},${eyeY}`;
+  } else {
+    leftEye = `M${eyeL - 8},${eyeY} C${eyeL - 8},${eyeY - 8} ${eyeL + 8},${eyeY - 8} ${eyeL + 8},${eyeY} C${eyeL + 8},${eyeY + 8} ${eyeL - 8},${eyeY + 8} ${eyeL - 8},${eyeY}`;
+    rightEye = `M${eyeR - 8},${eyeY} C${eyeR - 8},${eyeY - 8} ${eyeR + 8},${eyeY - 8} ${eyeR + 8},${eyeY} C${eyeR + 8},${eyeY + 8} ${eyeR - 8},${eyeY + 8} ${eyeR - 8},${eyeY}`;
+  }
+
+  // 嘴巴根据表情变化
+  let mouth: string;
+  const mouthY = 150 - 5 * hs;
+  if (expression === "happy") {
+    mouth = `M${250 - 15 * hs},${mouthY} C${250 - 8 * hs},${mouthY + 15} ${250 + 8 * hs},${mouthY + 15} ${250 + 15 * hs},${mouthY}`;
+  } else if (expression === "sad") {
+    mouth = `M${250 - 15 * hs},${mouthY + 10} C${250 - 8 * hs},${mouthY - 5} ${250 + 8 * hs},${mouthY - 5} ${250 + 15 * hs},${mouthY + 10}`;
+  } else if (expression === "surprised") {
+    mouth = `M${250 - 8 * hs},${mouthY} C${250 - 8 * hs},${mouthY + 15} ${250 + 8 * hs},${mouthY + 15} ${250 + 8 * hs},${mouthY}`;
+  } else if (expression === "angry") {
+    mouth = `M${250 - 12 * hs},${mouthY + 5} L${250 + 12 * hs},${mouthY + 5}`;
+  } else {
+    mouth = `M${250 - 10 * hs},${mouthY} C${250 - 5 * hs},${mouthY + 8} ${250 + 5 * hs},${mouthY + 8} ${250 + 10 * hs},${mouthY}`;
+  }
+
+  // 发型
+  let hair = "";
+  if (hairStyle === "short") {
+    hair = `M${250 - headR * 0.8},${headTop + 10} C${250 - headR * 0.9},${headTop - 20} ${250 + headR * 0.9},${headTop - 20} ${250 + headR * 0.8},${headTop + 10}`;
+  } else if (hairStyle === "long") {
+    hair = `M${250 - headR * 0.8},${headTop + 10} C${250 - headR * 0.9},${headTop - 20} ${250 + headR * 0.9},${headTop - 20} ${250 + headR * 0.8},${headTop + 10} L${250 + headR * 0.9},${neckY + 40} C${250 + headR * 0.7},${neckY + 60} ${250 - headR * 0.7},${neckY + 60} ${250 - headR * 0.9},${neckY + 40} Z`;
+  } else if (hairStyle === "ponytail") {
+    hair = `M${250 - headR * 0.8},${headTop + 10} C${250 - headR * 0.9},${headTop - 20} ${250 + headR * 0.9},${headTop - 20} ${250 + headR * 0.8},${headTop + 10} M${250 + headR * 0.5},${headTop + 20} C${250 + headR * 1.2},${headTop} ${250 + headR * 1.5},${headTop + 30} ${250 + headR * 1.0},${headTop + 60}`;
+  }
+  // bald: 无头发
+
+  // 配饰
+  let accessory = "";
+  if (accessories === "glasses") {
+    accessory = `M${250 - 25 * hs},${eyeY - 5} C${250 - 30 * hs},${eyeY - 12} ${250 - 10 * hs},${eyeY - 12} ${250 - 5 * hs},${eyeY - 5} C${250 - 10 * hs},${eyeY + 2} ${250 - 30 * hs},${eyeY + 2} ${250 - 25 * hs},${eyeY - 5} M${250 + 5 * hs},${eyeY - 5} C${250 + 10 * hs},${eyeY - 12} ${250 + 30 * hs},${eyeY - 12} ${250 + 25 * hs},${eyeY - 5} C${250 + 30 * hs},${eyeY + 2} ${250 + 10 * hs},${eyeY + 2} ${250 + 5 * hs},${eyeY - 5} M${250 - 5 * hs},${eyeY - 3} L${250 + 5 * hs},${eyeY - 3}`;
+  } else if (accessories === "hat") {
+    accessory = `M${250 - headR * 1.2},${headTop + 15} L${250 + headR * 1.2},${headTop + 15} L${250 + headR * 0.9},${headTop - 10} L${250 - headR * 0.9},${headTop - 10} Z`;
+  } else if (accessories === "scarf") {
+    accessory = `M${250 - shoulderW - 10},${neckY + 10} C${250 - shoulderW - 20},${neckY + 30} ${250 + shoulderW + 20},${neckY + 30} ${250 + shoulderW + 10},${neckY + 10} M${250 - shoulderW - 15},${neckY + 20} L${250 - shoulderW - 25},${neckY + 60}`;
+  }
+
   const d = [
     // 头
-    "M250,80 C280,80 300,100 300,130 C300,160 280,180 250,180 C220,180 200,160 200,130 C200,100 220,80 250,80",
+    `M250,${headTop} C${250 + headR * 0.6},${headTop} ${250 + headR},${100 - headR * 0.4} ${250 + headR},${headCenter} C${250 + headR},160 ${250 + headR * 0.6},${neckY - headR * 0.2} 250,${neckY - headR * 0.2} C${250 - headR * 0.6},${neckY - headR * 0.2} ${250 - headR},160 ${250 - headR},${headCenter} C${250 - headR},${100 - headR * 0.4} ${250 - headR * 0.6},${headTop} 250,${headTop}`,
+    // 发型
+    hair,
+    // 眼睛
+    leftEye, rightEye,
+    // 瞳孔（非闭眼/惊讶时）
+    expression !== "surprised" ? `M${eyeL},${eyeY} C${eyeL - 3},${eyeY - 3} ${eyeL + 3},${eyeY - 3} ${eyeL},${eyeY}` : "",
+    expression !== "surprised" ? `M${eyeR},${eyeY} C${eyeR - 3},${eyeY - 3} ${eyeR + 3},${eyeY - 3} ${eyeR},${eyeY}` : "",
+    // 眉毛
+    expression === "angry" ? `M${eyeL - 10},${eyeY - 15} L${eyeL + 10},${eyeY - 10}` : `M${eyeL - 10},${eyeY - 12} L${eyeL + 10},${eyeY - 12}`,
+    expression === "angry" ? `M${eyeR - 10},${eyeY - 10} L${eyeR + 10},${eyeY - 15}` : `M${eyeR - 10},${eyeY - 12} L${eyeR + 10},${eyeY - 12}`,
+    // 鼻子
+    `M250,${140 - 5 * hs} L${250 + 5 * hs},${145 - 5 * hs} L250,${148 - 5 * hs}`,
+    // 嘴巴
+    mouth,
+    // 配饰
+    accessory,
     // 身体
-    "M250,180 L250,320",
+    `M${250 - shoulderW},${neckY} L${250 + shoulderW},${neckY} L${250 + shoulderW * 0.8},${neckY + bodyLen} L${250 - shoulderW * 0.8},${neckY + bodyLen} Z`,
     // 左臂
-    "M250,220 L170,280",
+    `M${250 - shoulderW},${neckY + 20} L${250 - shoulderW - 50},${neckY + 20 + 60 * bl} L${250 - shoulderW - 40},${neckY + 20 + 70 * bl}`,
     // 右臂
-    "M250,220 L330,280",
+    `M${250 + shoulderW},${neckY + 20} L${250 + shoulderW + 50},${neckY + 20 + 60 * bl} L${250 + shoulderW + 40},${neckY + 20 + 70 * bl}`,
     // 左腿
-    "M250,320 L180,430",
+    `M${250 - shoulderW * 0.4},${neckY + bodyLen} L${250 - 60},${neckY + bodyLen + 100} L${250 - 70},${neckY + bodyLen + 110}`,
     // 右腿
-    "M250,320 L320,430",
-    // 左眼
-    "M235,125 C232,118 238,112 242,118",
-    // 右眼
-    "M265,125 C262,118 268,112 272,118",
-    // 嘴
-    "M240,150 C245,158 255,158 260,150",
-  ].join(" ");
+    `M${250 + shoulderW * 0.4},${neckY + bodyLen} L${250 + 60},${neckY + bodyLen + 100} L${250 + 70},${neckY + bodyLen + 110}`,
+    // 鞋子
+    `M${250 - 75},${neckY + bodyLen + 110} L${250 - 55},${neckY + bodyLen + 110} L${250 - 55},${neckY + bodyLen + 120} L${250 - 75},${neckY + bodyLen + 120} Z`,
+    `M${250 + 55},${neckY + bodyLen + 110} L${250 + 75},${neckY + bodyLen + 110} L${250 + 75},${neckY + bodyLen + 120} L${250 + 55},${neckY + bodyLen + 120} Z`,
+  ].filter(Boolean).join(" ");
 
   return {
     name: "人物", pathData: d,

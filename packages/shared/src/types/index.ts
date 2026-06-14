@@ -68,6 +68,45 @@ export interface Node {
   scaleY: number;
   children: string[];
   metadata: NodeMetadata;
+
+  // ─── 渐变与阴影（V2.1 视觉增强） ───
+
+  /** 填充渐变配置 */
+  fillGradient?: GradientConfig;
+  /** 描边渐变配置 */
+  strokeGradient?: GradientConfig;
+  /** 阴影配置 */
+  shadow?: ShadowConfig;
+}
+
+/** 渐变配置 */
+export interface GradientConfig {
+  /** 渐变类型 */
+  type: "linear" | "radial";
+  /** 颜色断点 [{offset, color}]，offset 范围 0-1 */
+  stops: Array<{ offset: number; color: string }>;
+  /** 线性渐变起点（相对形状边界，0-1） */
+  startPoint?: { x: number; y: number };
+  /** 线性渐变终点（相对形状边界，0-1） */
+  endPoint?: { x: number; y: number };
+  /** 径向渐变中心（相对形状边界，0-1） */
+  center?: { x: number; y: number };
+  /** 径向渐变内半径（相对形状尺寸，0-1） */
+  innerRadius?: number;
+  /** 径向渐变外半径（相对形状尺寸，0-1） */
+  outerRadius?: number;
+}
+
+/** 阴影配置 */
+export interface ShadowConfig {
+  /** 阴影颜色 */
+  color: string;
+  /** 阴影模糊半径 */
+  blur: number;
+  /** 阴影 X 偏移 */
+  offsetX: number;
+  /** 阴影 Y 偏移 */
+  offsetY: number;
 }
 
 export interface NodeMetadata {

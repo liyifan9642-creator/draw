@@ -27,6 +27,52 @@ export interface TemplateParams {
   strokeWidth?: number;
   /** 旋转角度 */
   rotation?: number;
+
+  // ─── 参数化字段（可选，用于精细控制模板形态） ───
+
+  /** 身体宽度比例（0.5=瘦, 1.0=正常, 2.0=胖） */
+  bodyWidth?: number;
+  /** 身体高度比例 */
+  bodyHeight?: number;
+  /** 头部大小比例 */
+  headSize?: number;
+  /** 耳朵大小比例 */
+  earSize?: number;
+  /** 尾巴长度比例 */
+  tailLength?: number;
+  /** 朝向：front=正面, left=左, right=右, back=背面 */
+  facing?: "front" | "left" | "right" | "back";
+  /** 树冠大小比例（树模板） */
+  canopySize?: number;
+  /** 树干粗细比例（树模板） */
+  trunkWidth?: number;
+  /** 屋顶高度比例（房子模板） */
+  roofHeight?: number;
+  /** 门大小比例（房子模板） */
+  doorSize?: number;
+
+  // ─── 细粒度控制参数 ───
+
+  /** 眼睛形状：round=圆眼, slit=竖瞳, closed=闭眼, happy=笑眼 */
+  eyeShape?: "round" | "slit" | "closed" | "happy";
+  /** 嘴巴样式：smile=微笑, neutral=平静, open=张嘴, frown=皱眉 */
+  mouthStyle?: "smile" | "neutral" | "open" | "frown";
+  /** 是否伸出舌头（狗模板） */
+  tongueOut?: boolean;
+  /** 是否有斑点（狗模板） */
+  hasSpots?: boolean;
+  /** 胡须开关（猫模板） */
+  whiskers?: boolean;
+  /** 表情：happy=开心, sad=悲伤, neutral=平静, surprised=惊讶, angry=生气 */
+  expression?: "happy" | "sad" | "neutral" | "surprised" | "angry";
+  /** 发型：short=短发, long=长发, bald=光头, ponytail=马尾 */
+  hairStyle?: "short" | "long" | "bald" | "ponytail";
+  /** 配饰：glasses=眼镜, hat=帽子, scarf=围巾, none=无 */
+  accessories?: "glasses" | "hat" | "scarf" | "none";
+  /** 树叶密度（树模板）：sparse=稀疏, normal=正常, dense=茂密 */
+  leafDensity?: "sparse" | "normal" | "dense";
+  /** 尾巴姿态（狗模板）：up=上翘, down=下垂, curly=卷曲 */
+  tailStyle?: "up" | "down" | "curly";
 }
 
 export interface TemplateResult {
@@ -50,6 +96,20 @@ export interface TemplateResult {
   height: number;
   /** 旋转 */
   rotation: number;
+  /** 渐变配置（可选） */
+  fillGradient?: {
+    type: "linear" | "radial";
+    stops: Array<{ offset: number; color: string }>;
+    startPoint?: { x: number; y: number };
+    endPoint?: { x: number; y: number };
+  };
+  /** 阴影配置（可选） */
+  shadow?: {
+    color: string;
+    blur: number;
+    offsetX: number;
+    offsetY: number;
+  };
 }
 
 // ─── 模板定义 ─────────────────────────────────────────────────

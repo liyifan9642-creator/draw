@@ -328,11 +328,16 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "32px 40px",
     fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
     color: "#e8eaf6",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    minHeight: "100vh",
   },
   layout: {
     display: "flex",
     gap: 28,
     alignItems: "flex-start",
+    justifyContent: "center",
   },
   canvasWrapper: {
     display: "flex",

@@ -595,6 +595,9 @@ export function generate_template(params: {
       createdBy: "voice",
       name: params.name ?? result.name,
     },
+    // 渐变和阴影（如果模板定义了）
+    fillGradient: result.fillGradient,
+    shadow: result.shadow,
   };
 
   const addResult = store.addNode(node);

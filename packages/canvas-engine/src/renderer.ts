@@ -11,7 +11,7 @@
  */
 
 import Konva from "konva";
-import type { Node, Edge } from "@vdc/shared";
+import type { Node, Edge, GradientConfig, ShadowConfig } from "@vdc/shared";
 import { CANVAS_DEFAULTS, GRID_COLS, GRID_ROWS } from "@vdc/shared";
 import type { CanvasStore } from "./store";
 import {
@@ -21,6 +21,105 @@ import {
   createRoughTriangle,
   createRoughLine,
 } from "./roughRenderer";
+
+// ─── 渐变/阴影辅助函数 ────────────────────────────────────────
+
+/**
+ * 将渐变配置应用到 Konva 节点
+ *
+ * @param konvaNode  Konva 节点
+ * @param gradient   渐变配置
+ * @param propPrefix 属性前缀（"fill" 或 "stroke"）
+ * @param width      节点宽度（用于计算渐变坐标）
+ * @param height     节点高度
+ */
+function applyGradient(
+  konvaNode: Konva.Node,
+  gradient: GradientConfig,
+  propPrefix: "fill" | "stroke",
+  width: number,
+  height: number
+): void {
+  const stops: number[] = [];
+  for (const stop of gradient.stops) {
+    stops.push(stop.offset, ...parseColor(stop.color));
+  }
+
+  if (gradient.type === "linear") {
+    const start = gradient.startPoint ?? { x: 0, y: 0 };
+    const end = gradient.endPoint ?? { x: 0, y: 1 };
+    konvaNode.setAttr(`${propPrefix}LinearGradientStartPoint`, {
+      x: start.x * width,
+      y: start.y * height,
+    });
+    konvaNode.setAttr(`${propPrefix}LinearGradientEndPoint`, {
+      x: end.x * width,
+      y: end.y * height,
+    });
+    konvaNode.setAttr(`${propPrefix}LinearGradientColorStops`, stops);
+  } else if (gradient.type === "radial") {
+    const center = gradient.center ?? { x: 0.5, y: 0.5 };
+    const innerR = gradient.innerRadius ?? 0;
+    const outerR = gradient.outerRadius ?? 0.5;
+    konvaNode.setAttr(`${propPrefix}RadialGradientStartPoint`, {
+      x: center.x * width,
+      y: center.y * height,
+    });
+    konvaNode.setAttr(`${propPrefix}RadialGradientEndPoint`, {
+      x: center.x * width,
+      y: center.y * height,
+    });
+    konvaNode.setAttr(`${propPrefix}RadialGradientStartRadius`, innerR * Math.min(width, height));
+    konvaNode.setAttr(`${propPrefix}RadialGradientEndRadius`, outerR * Math.min(width, height));
+    konvaNode.setAttr(`${propPrefix}RadialGradientColorStops`, stops);
+  }
+}
+
+/**
+ * 将阴影配置应用到 Konva 节点
+ */
+function applyShadow(konvaNode: Konva.Node, shadow: ShadowConfig): void {
+  konvaNode.setAttr("shadowColor", shadow.color);
+  konvaNode.setAttr("shadowBlur", shadow.blur);
+  konvaNode.setAttr("shadowOffsetX", shadow.offsetX);
+  konvaNode.setAttr("shadowOffsetY", shadow.offsetY);
+}
+
+/**
+ * 解析颜色字符串为 [r, g, b, a] 数组（Konva 渐变需要）
+ */
+function parseColor(color: string): number[] {
+  // 简单的颜色解析：支持 #RGB, #RRGGBB, #RRGGBBAA
+  if (color.startsWith("#")) {
+    const hex = color.slice(1);
+    if (hex.length === 3) {
+      return [
+        parseInt(hex[0] + hex[0], 16) / 255,
+        parseInt(hex[1] + hex[1], 16) / 255,
+        parseInt(hex[2] + hex[2], 16) / 255,
+        1,
+      ];
+    }
+    if (hex.length === 6) {
+      return [
+        parseInt(hex.slice(0, 2), 16) / 255,
+        parseInt(hex.slice(2, 4), 16) / 255,
+        parseInt(hex.slice(4, 6), 16) / 255,
+        1,
+      ];
+    }
+    if (hex.length === 8) {
+      return [
+        parseInt(hex.slice(0, 2), 16) / 255,
+        parseInt(hex.slice(2, 4), 16) / 255,
+        parseInt(hex.slice(4, 6), 16) / 255,
+        parseInt(hex.slice(6, 8), 16) / 255,
+      ];
+    }
+  }
+  // 默认返回黑色
+  return [0, 0, 0, 1];
+}
 
 // ─── 类型 ────────────────────────────────────────────────────
 
@@ -455,6 +554,21 @@ export class KonvaRenderer {
       // 存储 store nodeId 用于反向查找
       shape.setAttr("storeId", node.id);
       shape.visible(node.visible);
+
+      // 应用渐变
+      const w = node.width ?? node.radius ?? 100;
+      const h = node.height ?? node.radius ?? 100;
+      if (node.fillGradient) {
+        applyGradient(shape, node.fillGradient, "fill", w, h);
+      }
+      if (node.strokeGradient) {
+        applyGradient(shape, node.strokeGradient, "stroke", w, h);
+      }
+
+      // 应用阴影
+      if (node.shadow) {
+        applyShadow(shape, node.shadow);
+      }
     }
 
     return shape;
