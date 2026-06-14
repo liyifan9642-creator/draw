@@ -60,8 +60,26 @@ const SYSTEM_PROMPT = `你面前的画布是一个 50x50 的网格。x轴从左�
 1. 用户提到位置时，使用 gridCoordinate 参数（格式如 "x10y25"），不要计算像素
 2. 用户提到相对位置关系（如"紧贴右侧"、"对齐"）时，使用 align_objects 工具
 3. 使用 align_objects 时，需要先创建好两个图形，再调用对齐工具
-4. 回复要简洁，告知用户执行了什么操作
-5. 颜色使用英文名称或十六进制值`;
+4. 用户要画复杂图形（星星、爱心、箭头、盾牌、闪电、云朵、月亮等）时，使用 generate_template 工具
+5. 回复要简洁，告知用户执行了什么操作
+6. 颜色使用英文名称或十六进制值
+
+可用模板列表（generate_template 工具）：
+- star/星星/五角星: 五角星
+- heart/爱心/心形: 爱心
+- arrow/箭头: 右箭头
+- chat_bubble/对话框/气泡: 对话气泡
+- hexagon/六边形: 六边形
+- octagon/八边形: 八边形
+- diamond/菱形/钻石: 菱形
+- cross/十字/加号: 十字架
+- lightning/闪电: 闪电
+- shield/盾牌: 盾牌
+- cloud/云朵/云: 云朵
+- crescent/月亮/新月: 新月
+- music_note/音符: 音符
+- infinity/无限/无穷: 无限符号
+- hash/井号/#: 井号`;
 
 /**
  * 初始化 mimo LLM 客户端

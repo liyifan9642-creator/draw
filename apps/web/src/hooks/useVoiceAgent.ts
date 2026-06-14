@@ -90,6 +90,24 @@ function getToolSchemas(): ChatCompletionTool[] {
     {
       type: "function",
       function: {
+        name: "generate_template",
+        description: "生成复杂图形模板（星星、爱心、箭头、盾牌、闪电、云朵、月亮、音符等）。使用 gridCoordinate 定位。",
+        parameters: {
+          type: "object",
+          properties: {
+            template: { type: "string", description: "模板名，如 star, heart, arrow, shield, lightning, cloud 等，或中文：星星、爱心、箭头" },
+            gridCoordinate: { type: "string", description: '网格坐标，如 "x25y25"' },
+            size: { type: "number", description: "尺寸（直径），默认 100" },
+            fill: { type: "string" }, stroke: { type: "string" }, strokeWidth: { type: "number" },
+            rotation: { type: "number" }, name: { type: "string" },
+          },
+          required: ["template"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
         name: "generate_image", description: "生成 AI 图像",
         parameters: {
           type: "object",

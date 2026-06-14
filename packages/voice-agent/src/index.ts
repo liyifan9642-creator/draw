@@ -15,11 +15,16 @@ export { generateImage } from "./imageService";
 export type { ImageStyle, ImageGenerationRequest, ImageGenerationResult } from "./imageService";
 export type { AlignmentRelation } from "@vdc/canvas-engine";
 
+// 模板系统
+export { generateTemplate, getTemplateNames, getTemplateDescriptions, resolveTemplateName } from "./templates";
+export type { TemplateName, TemplateParams, TemplateResult } from "./templates";
+
 // 单独导出各工具函数，便于单元测试
 export {
   set_canvas_background,
   generate_shape,
   generate_image,
+  generate_template,
   modify_node,
   delete_node,
   undo_action,

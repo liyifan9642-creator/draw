@@ -657,50 +657,18 @@ export function TextInput({ store, canvasWidth, canvasHeight, onLog }: TextInput
   );
 
   return (
-    <div style={styles.container}>
+    <div className="vdc-input-container">
       <input
         type="text"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder='输入指令，如 "在x10y10画一个红色正方形"、"画一个蓝色圆形在x25y25"、"紧贴红色正方形右侧"、"撤销"'
-        style={styles.input}
+        className="vdc-text-input"
       />
-      <button onClick={handleSubmit} style={styles.button}>
+      <button onClick={handleSubmit} className="vdc-send-button">
         发送
       </button>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    display: "flex",
-    gap: 8,
-    padding: "12px 16px",
-    background: "#16213e",
-    borderRadius: 8,
-    border: "1px solid #333",
-  },
-  input: {
-    flex: 1,
-    padding: "8px 12px",
-    borderRadius: 6,
-    border: "1px solid #444",
-    background: "#0f3460",
-    color: "#eee",
-    fontSize: 14,
-    fontFamily: "'Segoe UI', system-ui, sans-serif",
-    outline: "none",
-  },
-  button: {
-    padding: "8px 20px",
-    borderRadius: 6,
-    border: "none",
-    background: "#2196F3",
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-};

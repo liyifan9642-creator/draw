@@ -6,6 +6,7 @@
  *   语音模式：点击右下角悬浮按钮开启语音监听（需配置 VITE_MIMO_API_KEY）
  *
  * V2.0: 使用 mimo-v2.5-pro 替代 ElevenLabs 作为 LLM 后端
+ * V2.1: UI/UX Pro Max — 玻璃拟态 + 粒子背景 + 现代字体
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -14,6 +15,7 @@ import { useVoiceAgent } from "./hooks/useVoiceAgent";
 import { setCanvasSize } from "@vdc/voice-agent";
 import { VoiceButton } from "./components/VoiceButton";
 import { TextInput } from "./components/TextInput";
+import { AnimatedBackground } from "./components/AnimatedBackground";
 
 /** 画布尺寸常量（与 KonvaRenderer 初始化一致） */
 const CANVAS_WIDTH = 1000;
@@ -65,7 +67,7 @@ export default function App() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    addLog("📤 画布已导出为 drawing.canvas", "#2196F3");
+    addLog("📤 画布已导出为 drawing.canvas", "#26c6da");
   };
 
   // ─── 导入画布 ──────────────────────────────────────────────
@@ -85,12 +87,12 @@ export default function App() {
         const result = store.importState(data);
 
         if (result.success) {
-          addLog(`📥 ${result.message}`, "#4CAF50");
+          addLog(`📥 ${result.message}`, "#64ffda");
         } else {
-          addLog(`❌ 导入失败: ${result.errorMessage}`, "#F44336");
+          addLog(`❌ 导入失败: ${result.errorMessage}`, "#ff4081");
         }
       } catch (err) {
-        addLog(`❌ 文件解析失败: ${err instanceof Error ? err.message : "未知错误"}`, "#F44336");
+        addLog(`❌ 文件解析失败: ${err instanceof Error ? err.message : "未知错误"}`, "#ff4081");
       }
     };
     reader.readAsText(file);
@@ -124,9 +126,9 @@ export default function App() {
     // 检测是否从 localStorage 恢复
     const hasStoredData = localStorage.getItem(STORAGE_KEY) !== null;
     if (hasStoredData && store.nodeCount > 0) {
-      addLog(`🔄 从本地存储恢复：${store.nodeCount} 个节点`, "#FF9800");
+      addLog(`🔄 从本地存储恢复：${store.nodeCount} 个节点`, "#ff9800");
     } else {
-      addLog("画布初始化完成", "#2196F3");
+      addLog("画布初始化完成", "#26c6da");
     }
 
     return () => {
@@ -165,71 +167,104 @@ export default function App() {
 
   return (
     <div style={styles.root}>
-      <h1 style={styles.title}>VDC — Voice-Driven Canvas</h1>
+      {/* 交互式粒子背景 */}
+      <AnimatedBackground />
 
-      <div style={styles.layout}>
-        {/* 画布区域 */}
-        <div style={styles.canvasWrapper}>
-          <div ref={containerRef} style={styles.canvas} />
+      {/* 主内容（z-index 在背景之上） */}
+      <div style={styles.content}>
+        <h1 className="vdc-title vdc-fade-in">VDC — Voice-Driven Canvas</h1>
 
-          {/* 文本输入 */}
-          <div style={styles.inputWrapper}>
-            <TextInput store={store} canvasWidth={CANVAS_WIDTH} canvasHeight={CANVAS_HEIGHT} onLog={addLog} />
-          </div>
-        </div>
+        <div style={styles.layout}>
+          {/* 画布区域 */}
+          <div style={styles.canvasWrapper} className="vdc-slide-up">
+            <div className="vdc-canvas-container">
+              <div ref={containerRef} style={styles.canvas} />
+            </div>
 
-        {/* 状态面板 */}
-        <div style={styles.panel}>
-          <h3 style={styles.panelTitle}>实时状态</h3>
-          <div style={styles.stat}>
-            <span>节点数:</span>
-            <span style={styles.statValue}>{nodeCount}</span>
-          </div>
-          <div style={styles.stat}>
-            <span>背景色:</span>
-            <span style={{ ...styles.statValue, color: background }}>
-              {background}
-            </span>
-          </div>
-          <div style={styles.stat}>
-            <span>Undo 栈:</span>
-            <span style={styles.statValue}>{undoDepth}</span>
-          </div>
-          <div style={styles.stat}>
-            <span>语音状态:</span>
-            <span
-              style={{
-                ...styles.statValue,
-                color: isListening ? "#4CAF50" : "#9E9E9E",
-              }}
-            >
-              {agentStatus === "listening"
-                ? "Listening"
-                : agentStatus === "thinking"
-                  ? "Thinking..."
-                  : agentStatus === "speaking"
-                    ? "Speaking"
-                    : agentStatus === "connected"
-                      ? "Ready"
-                      : agentStatus === "connecting"
-                        ? "Connecting..."
-                        : apiKey
-                          ? "Off"
-                          : "未配置"}
-            </span>
+            {/* 文本输入 */}
+            <div style={styles.inputWrapper}>
+              <TextInput store={store} canvasWidth={CANVAS_WIDTH} canvasHeight={CANVAS_HEIGHT} onLog={addLog} />
+            </div>
           </div>
 
-          <h3 style={{ ...styles.panelTitle, marginTop: 24 }}>操作日志</h3>
-          <div style={styles.logContainer}>
-            {logs.map((log, i) => (
-              <div key={i} style={styles.logEntry}>
-                <span style={styles.logTime}>{log.time}</span>
-                <span style={{ color: log.color }}>{log.message}</span>
-              </div>
-            ))}
-            {logs.length === 0 && (
-              <span style={styles.logPlaceholder}>等待事件...</span>
-            )}
+          {/* 状态面板 */}
+          <div className="vdc-status-panel vdc-slide-up" style={{ animationDelay: "0.1s" }}>
+            <h3 className="vdc-panel-title">实时状态</h3>
+
+            <div className="vdc-stat-row">
+              <span className="vdc-stat-label">节点数</span>
+              <span className="vdc-stat-value">{nodeCount}</span>
+            </div>
+            <div className="vdc-stat-row">
+              <span className="vdc-stat-label">背景色</span>
+              <span className="vdc-stat-value" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 12,
+                    height: 12,
+                    borderRadius: 3,
+                    background: background,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    boxShadow: `0 0 8px ${background}44`,
+                  }}
+                />
+                {background}
+              </span>
+            </div>
+            <div className="vdc-stat-row">
+              <span className="vdc-stat-label">Undo 栈</span>
+              <span className="vdc-stat-value">{undoDepth}</span>
+            </div>
+            <div className="vdc-stat-row">
+              <span className="vdc-stat-label">语音状态</span>
+              <span
+                className="vdc-stat-value"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  color: isListening ? "#64ffda" : agentStatus === "thinking" ? "#b388ff" : agentStatus === "speaking" ? "#82b1ff" : agentStatus === "connecting" ? "#ffab40" : "rgba(150, 160, 200, 0.5)",
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: isListening ? "#64ffda" : agentStatus === "thinking" ? "#b388ff" : agentStatus === "speaking" ? "#82b1ff" : agentStatus === "connecting" ? "#ffab40" : "rgba(150, 160, 200, 0.3)",
+                    boxShadow: isListening ? "0 0 8px #64ffda" : "none",
+                  }}
+                />
+                {agentStatus === "listening"
+                  ? "Listening"
+                  : agentStatus === "thinking"
+                    ? "Thinking..."
+                    : agentStatus === "speaking"
+                      ? "Speaking"
+                      : agentStatus === "connected"
+                        ? "Ready"
+                        : agentStatus === "connecting"
+                          ? "Connecting..."
+                          : apiKey
+                            ? "Off"
+                            : "未配置"}
+              </span>
+            </div>
+
+            <h3 className="vdc-panel-title" style={{ marginTop: 28 }}>操作日志</h3>
+            <div className="vdc-log-container">
+              {logs.map((log, i) => (
+                <div key={i} className="vdc-log-entry">
+                  <span className="vdc-log-time">{log.time}</span>
+                  <span style={{ color: log.color }}>{log.message}</span>
+                </div>
+              ))}
+              {logs.length === 0 && (
+                <span className="vdc-log-placeholder">等待事件...</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -253,11 +288,7 @@ export default function App() {
       <div style={styles.ttsToggle}>
         <button
           onClick={() => setTtsEnabled((v) => !v)}
-          style={{
-            ...styles.ioButton,
-            background: ttsEnabled ? "#4CAF50" : "#16213e",
-            borderColor: ttsEnabled ? "#4CAF50" : "#444",
-          }}
+          className={`vdc-fab ${ttsEnabled ? "vdc-fab--active" : ""}`}
           title={ttsEnabled ? "关闭语音回复" : "开启语音回复"}
         >
           {ttsEnabled ? "🔊 TTS ON" : "🔇 TTS OFF"}
@@ -266,10 +297,10 @@ export default function App() {
 
       {/* Import/Export 按钮 */}
       <div style={styles.ioButtons}>
-        <button onClick={handleImport} style={styles.ioButton} title="导入画布">
+        <button onClick={handleImport} className="vdc-fab" title="导入画布">
           📥 Import
         </button>
-        <button onClick={handleExport} style={styles.ioButton} title="导出画布">
+        <button onClick={handleExport} className="vdc-fab" title="导出画布">
           📤 Export
         </button>
       </div>
@@ -290,108 +321,48 @@ export default function App() {
 
 const styles: Record<string, React.CSSProperties> = {
   root: {
-    fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
-    background: "#1a1a2e",
-    color: "#eee",
     minHeight: "100vh",
-    padding: "24px 32px",
+    position: "relative",
+    overflow: "hidden",
   },
-  title: {
-    margin: "0 0 20px",
-    fontSize: 22,
-    fontWeight: 600,
-    color: "#90CAF9",
+  content: {
+    position: "relative",
+    zIndex: 1,
+    padding: "32px 40px",
+    fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+    color: "#e8eaf6",
   },
   layout: {
     display: "flex",
-    gap: 24,
+    gap: 28,
     alignItems: "flex-start",
   },
   canvasWrapper: {
     display: "flex",
     flexDirection: "column",
-    gap: 12,
+    gap: 14,
   },
   canvas: {
-    border: "2px solid #333",
-    borderRadius: 8,
-    overflow: "hidden",
-    flexShrink: 0,
+    display: "block",
     background: "#fff",
   },
   inputWrapper: {
     width: 1000,
-  },
-  panel: {
-    background: "#16213e",
-    borderRadius: 8,
-    padding: "16px 20px",
-    minWidth: 320,
-    border: "1px solid #333",
-  },
-  panelTitle: {
-    margin: "0 0 12px",
-    fontSize: 14,
-    fontWeight: 600,
-    color: "#64B5F6",
-    textTransform: "uppercase" as const,
-    letterSpacing: 1,
-  },
-  stat: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: 8,
-    fontSize: 14,
-  },
-  statValue: {
-    fontWeight: 700,
-    fontFamily: "monospace",
-  },
-  logContainer: {
-    maxHeight: 300,
-    overflowY: "auto" as const,
-  },
-  logEntry: {
-    display: "flex",
-    gap: 12,
-    marginBottom: 6,
-    fontSize: 13,
-    fontFamily: "monospace",
-  },
-  logTime: {
-    color: "#666",
-    flexShrink: 0,
-  },
-  logPlaceholder: {
-    color: "#555",
-    fontStyle: "italic",
-    fontSize: 13,
   },
   ioButtons: {
     position: "fixed" as const,
     bottom: 32,
     left: 32,
     display: "flex",
-    gap: 8,
+    gap: 10,
     zIndex: 9999,
   },
   ttsToggle: {
     position: "fixed" as const,
-    bottom: 80,
+    bottom: 84,
     left: 32,
     display: "flex",
-    gap: 8,
+    gap: 10,
     zIndex: 9999,
-  },
-  ioButton: {
-    padding: "8px 16px",
-    borderRadius: 6,
-    border: "1px solid #444",
-    background: "#16213e",
-    color: "#eee",
-    fontSize: 13,
-    fontFamily: "'Segoe UI', system-ui, sans-serif",
-    cursor: "pointer",
-    transition: "all 0.2s ease",
   },
 };

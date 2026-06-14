@@ -405,8 +405,24 @@ export class KonvaRenderer {
         shape = this.createImageNode(node);
         break;
 
+      case "path":
+        // SVG 路径节点 — 用于复杂矢量图形（模板、自由绘制等）
+        shape = new Konva.Path({
+          x: node.x,
+          y: node.y,
+          data: node.pathData ?? "",
+          fill: node.fill,
+          stroke: node.stroke,
+          strokeWidth: node.strokeWidth,
+          rotation: node.rotation,
+          opacity: node.opacity,
+          scaleX: node.scaleX,
+          scaleY: node.scaleY,
+        });
+        break;
+
       default:
-        // group / path 等暂不实现，返回占位 Rect
+        // group 等暂不实现，返回占位 Rect
         shape = new Konva.Rect({
           x: node.x,
           y: node.y,
@@ -630,6 +646,13 @@ export class KonvaRenderer {
         (konvaNode as Konva.Line).strokeWidth(storeNode.strokeWidth || 2);
         break;
 
+      case "path":
+        (konvaNode as Konva.Path).data(storeNode.pathData ?? "");
+        (konvaNode as Konva.Path).fill(storeNode.fill);
+        (konvaNode as Konva.Path).stroke(storeNode.stroke);
+        (konvaNode as Konva.Path).strokeWidth(storeNode.strokeWidth);
+        break;
+
       default:
         // triangle, placeholder 等
         if ("fill" in konvaNode) (konvaNode as any).fill(storeNode.fill);
@@ -642,23 +665,28 @@ export class KonvaRenderer {
    * 检查是否需要重建节点（类型变更或图片 URL 变更）
    */
   private needsNodeRecreation(konvaNode: Konva.Node, storeNode: Node): boolean {
-    // 检查是否为 Konva.Image 类型
+    // 检测 Konva 节点的实际类型
     const isKonvaImage = konvaNode instanceof Konva.Image;
     const isKonvaText = konvaNode instanceof Konva.Text;
+    const isKonvaRect = konvaNode instanceof Konva.Rect;
+    const isKonvaCircle = konvaNode instanceof Konva.Circle;
+    const isKonvaPath = konvaNode instanceof Konva.Path;
 
-    // Store 节点是 image 类型
-    if (storeNode.type === "image") {
-      // 如果 Konva 节点不是 Image，需要重建（placeholder → image）
-      if (!isKonvaImage) return true;
-      // 如果 imageUrl 变更，需要重建
+    // Store 类型与 Konva 节点类型不匹配 → 需要重建
+    // 这覆盖了 undo/redo 导致的类型回退（如 image → text）
+    const typeMismatch =
+      (storeNode.type === "image" && !isKonvaImage) ||
+      (storeNode.type === "text" && !isKonvaText) ||
+      (storeNode.type === "rect" && !isKonvaRect) ||
+      (storeNode.type === "circle" && !isKonvaCircle) ||
+      (storeNode.type === "path" && !isKonvaPath);
+
+    if (typeMismatch) return true;
+
+    // image 节点：imageUrl 变更需要重建
+    if (storeNode.type === "image" && isKonvaImage) {
       const currentImageUrl = konvaNode.getAttr("imageUrl");
       if (currentImageUrl !== storeNode.imageUrl) return true;
-    }
-
-    // 如果 Store 节点是 text 但有 imageUrl（Loading 占位），检查是否需要更新文本
-    if (storeNode.type === "text" && isKonvaText) {
-      // 文本节点的文本变更不需要重建
-      return false;
     }
 
     return false;
@@ -705,7 +733,7 @@ export class KonvaRenderer {
     return nodes
       .map(
         (n) =>
-          `${n.id}:${n.type},${n.x},${n.y},${n.width},${n.height},${n.radius},${n.fill},${n.stroke},${n.rotation},${n.opacity},${n.visible},${n.zIndex},${n.text},${n.fontSize},${n.imageUrl ?? ""}`
+          `${n.id}:${n.type},${n.x},${n.y},${n.width},${n.height},${n.radius},${n.fill},${n.stroke},${n.rotation},${n.opacity},${n.visible},${n.zIndex},${n.text},${n.fontSize},${n.imageUrl ?? ""},${n.pathData ?? ""}`
       )
       .join("|");
   }

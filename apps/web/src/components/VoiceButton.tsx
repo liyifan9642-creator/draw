@@ -4,6 +4,8 @@
  * 显示麦克风状态和当前 Agent 模式。
  * 点击切换语音监听的开启/关闭。
  * TTS 播放时显示停止按钮。
+ *
+ * V2.1: UI/UX Pro Max — 玻璃拟态 + 增强光效
  */
 
 import type { AgentMode, AgentStatus } from "../hooks/useVoiceAgent";
@@ -35,7 +37,6 @@ export function VoiceButton({
 }: VoiceButtonProps) {
   const statusText = getStatusText(status, mode);
   const buttonColor = getButtonColor(status);
-  const pulseAnim = status === "listening";
   const isDisabled = status === "connecting" || status === "thinking";
 
   return (
@@ -46,7 +47,7 @@ export function VoiceButton({
         {isSpeaking && onStopTts && (
           <button
             onClick={onStopTts}
-            style={stopButtonStyle}
+            className="vdc-stop-btn"
             title="停止语音播放"
           >
             ⏹
@@ -57,12 +58,11 @@ export function VoiceButton({
         <button
           onClick={onToggle}
           disabled={isDisabled}
+          className={`vdc-voice-btn ${status === "listening" ? "vdc-voice-btn--listening" : ""}`}
           style={{
-            ...mainButtonStyle,
-            background: buttonColor,
+            background: `linear-gradient(135deg, ${buttonColor}, ${adjustColor(buttonColor, -20)})`,
             cursor: isDisabled ? "wait" : "pointer",
-            boxShadow: `0 4px 20px ${buttonColor}66`,
-            animation: pulseAnim ? "vdc-pulse 1.5s infinite" : "none",
+            boxShadow: `0 4px 24px ${buttonColor}55, 0 0 60px ${buttonColor}22`,
             opacity: isDisabled ? 0.7 : 1,
           }}
           title={isListening ? "停止监听" : "开始监听"}
@@ -74,16 +74,24 @@ export function VoiceButton({
       {/* 状态指示器 */}
       <div style={statusPanelStyle}>
         {/* 状态文本 */}
-        <div style={statusTextStyle}>
+        <div
+          className="vdc-voice-status"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
           <span
             style={{
               display: "inline-block",
               width: 8,
               height: 8,
               borderRadius: "50%",
-              background: status === "listening" ? "#4CAF50" : status === "thinking" ? "#9C27B0" : status === "speaking" ? "#2196F3" : status === "connecting" ? "#FF9800" : "#9E9E9E",
-              marginRight: 8,
+              background: status === "listening" ? "#64ffda" : status === "thinking" ? "#b388ff" : status === "speaking" ? "#82b1ff" : status === "connecting" ? "#ffab40" : "rgba(150, 160, 200, 0.4)",
+              boxShadow: status === "listening" ? "0 0 10px #64ffda" : status === "thinking" ? "0 0 10px #b388ff" : "none",
               verticalAlign: "middle",
+              flexShrink: 0,
             }}
           />
           {statusText}
@@ -91,21 +99,39 @@ export function VoiceButton({
 
         {/* 用户转录 */}
         {isListening && userTranscript && (
-          <div style={bubbleStyle("rgba(33,150,243,0.85)")}>
+          <div
+            className="vdc-voice-bubble"
+            style={{
+              background: "rgba(92, 107, 192, 0.25)",
+              color: "#c5cae9",
+            }}
+          >
             🗣️ {userTranscript}
           </div>
         )}
 
         {/* Agent 回复 */}
         {isListening && agentResponse && (
-          <div style={bubbleStyle("rgba(76,175,80,0.85)")}>
+          <div
+            className="vdc-voice-bubble"
+            style={{
+              background: "rgba(38, 198, 218, 0.2)",
+              color: "#b2ebf2",
+            }}
+          >
             🤖 {agentResponse}
           </div>
         )}
 
         {/* 错误信息 */}
         {error && (
-          <div style={bubbleStyle("rgba(244,67,54,0.85)")}>
+          <div
+            className="vdc-voice-bubble"
+            style={{
+              background: "rgba(255, 64, 129, 0.2)",
+              color: "#ff80ab",
+            }}
+          >
             ❌ {error}
           </div>
         )}
@@ -114,9 +140,9 @@ export function VoiceButton({
       {/* 脉冲动画 CSS */}
       <style>{`
         @keyframes vdc-pulse {
-          0% { box-shadow: 0 0 0 0 ${buttonColor}66; }
-          70% { box-shadow: 0 0 0 16px ${buttonColor}00; }
-          100% { box-shadow: 0 0 0 0 ${buttonColor}00; }
+          0% { box-shadow: 0 0 0 0 ${buttonColor}55, 0 0 40px ${buttonColor}22; }
+          70% { box-shadow: 0 0 0 20px ${buttonColor}00, 0 0 60px ${buttonColor}11; }
+          100% { box-shadow: 0 0 0 0 ${buttonColor}00, 0 0 40px ${buttonColor}22; }
         }
       `}</style>
     </>
@@ -132,75 +158,21 @@ const buttonGroupStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: 8,
+  gap: 12,
   zIndex: 9999,
-};
-
-const mainButtonStyle: React.CSSProperties = {
-  width: 64,
-  height: 64,
-  borderRadius: "50%",
-  border: "none",
-  color: "#fff",
-  fontSize: 24,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  transition: "all 0.3s ease",
-};
-
-const stopButtonStyle: React.CSSProperties = {
-  width: 36,
-  height: 36,
-  borderRadius: "50%",
-  border: "none",
-  background: "#F44336",
-  color: "#fff",
-  fontSize: 16,
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  boxShadow: "0 2px 8px rgba(244,67,54,0.4)",
-  transition: "all 0.2s ease",
 };
 
 const statusPanelStyle: React.CSSProperties = {
   position: "fixed",
-  bottom: 116,
+  bottom: 120,
   right: 32,
   display: "flex",
   flexDirection: "column",
   alignItems: "flex-end",
-  gap: 6,
+  gap: 8,
   zIndex: 9999,
   pointerEvents: "none",
 };
-
-const statusTextStyle: React.CSSProperties = {
-  background: "rgba(0,0,0,0.75)",
-  color: "#fff",
-  padding: "6px 14px",
-  borderRadius: 20,
-  fontSize: 13,
-  fontFamily: "'Segoe UI', system-ui, sans-serif",
-  whiteSpace: "nowrap",
-  backdropFilter: "blur(8px)",
-};
-
-const bubbleStyle = (bg: string): React.CSSProperties => ({
-  background: bg,
-  color: "#fff",
-  padding: "6px 14px",
-  borderRadius: 12,
-  fontSize: 12,
-  fontFamily: "'Segoe UI', system-ui, sans-serif",
-  maxWidth: 280,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-  backdropFilter: "blur(8px)",
-});
 
 // ─── 工具函数 ────────────────────────────────────────────────
 
@@ -217,11 +189,20 @@ function getStatusText(status: AgentStatus, mode: AgentMode): string {
 
 function getButtonColor(status: AgentStatus): string {
   switch (status) {
-    case "disconnected": return "#607D8B";
-    case "connecting": return "#FF9800";
-    case "listening": return "#4CAF50";
-    case "thinking": return "#9C27B0";
-    case "speaking": return "#2196F3";
-    case "connected": return "#4CAF50";
+    case "disconnected": return "#455a64";
+    case "connecting": return "#ff9800";
+    case "listening": return "#00c853";
+    case "thinking": return "#7c4dff";
+    case "speaking": return "#5c6bc0";
+    case "connected": return "#00c853";
   }
+}
+
+/** 简单的颜色亮度调整 */
+function adjustColor(hex: string, amount: number): string {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const r = Math.min(255, Math.max(0, ((num >> 16) & 0xff) + amount));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amount));
+  const b = Math.min(255, Math.max(0, (num & 0xff) + amount));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 }

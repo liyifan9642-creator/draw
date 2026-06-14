@@ -59,6 +59,8 @@ export interface Node {
   fontSize?: number;
   fontFamily?: string;
   imageUrl?: string;
+  /** SVG 路径数据（path 节点使用） */
+  pathData?: string;
   zIndex: number;
   locked: boolean;
   visible: boolean;

@@ -17,6 +17,7 @@ import { CANVAS_DEFAULTS, resolveGridCoordinate } from "@vdc/shared";
 import { generateImage } from "./imageService";
 import type { ImageStyle } from "./imageService";
 import type { AlignmentRelation } from "@vdc/canvas-engine";
+import { generateTemplate } from "./templates";
 
 let _store: CanvasStore | null = null;
 let _idCounter = 0;
@@ -501,6 +502,105 @@ export function align_objects(params: {
 }
 
 /**
+ * 生成复杂图形模板
+ *
+ * 使用预定义的 SVG Path 模板渲染复杂图形。
+ * 支持 15+ 种模板：star, heart, arrow, chat_bubble, hexagon, octagon,
+ * diamond, cross, lightning, shield, cloud, crescent, music_note, infinity, hash
+ *
+ * 支持中文名：星星, 爱心, 箭头, 对话框, 六边形, 菱形, 闪电, 盾牌, 云朵, 月亮, 音符 等
+ */
+export function generate_template(params: {
+  template: string;
+  gridCoordinate?: string;
+  x?: number;
+  y?: number;
+  size?: number;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  rotation?: number;
+  name?: string;
+}): string {
+  const store = getStore();
+
+  // 解析坐标（优先 gridCoordinate）
+  let cx: number;
+  let cy: number;
+
+  if (params.gridCoordinate) {
+    const resolved = resolveGridCoordinate(
+      params.gridCoordinate,
+      _canvasWidth,
+      _canvasHeight,
+      true
+    );
+    if (!resolved) {
+      return JSON.stringify({
+        success: false,
+        errorCode: "INVALID_PARAMS",
+        errorMessage: `无效的网格坐标: '${params.gridCoordinate}'`,
+      });
+    }
+    cx = resolved.x;
+    cy = resolved.y;
+  } else {
+    cx = params.x ?? _canvasWidth / 2;
+    cy = params.y ?? _canvasHeight / 2;
+  }
+
+  // 生成模板
+  const result = generateTemplate(params.template, {
+    cx, cy,
+    size: params.size,
+    fill: params.fill,
+    stroke: params.stroke,
+    strokeWidth: params.strokeWidth,
+    rotation: params.rotation,
+  });
+
+  if (!result) {
+    return JSON.stringify({
+      success: false,
+      errorCode: "INVALID_PARAMS",
+      errorMessage: `未知模板: '${params.template}'。可用模板: star, heart, arrow, chat_bubble, hexagon, octagon, diamond, cross, lightning, shield, cloud, crescent, music_note, infinity, hash`,
+    });
+  }
+
+  // 创建 path 节点
+  const id = nextId("path");
+  const node: Node = {
+    id,
+    type: "path",
+    x: result.x,
+    y: result.y,
+    width: result.width,
+    height: result.height,
+    rotation: result.rotation,
+    fill: result.fill,
+    stroke: result.stroke,
+    strokeWidth: result.strokeWidth,
+    opacity: 1,
+    pathData: result.pathData,
+    zIndex: store.nodeCount,
+    locked: false,
+    visible: true,
+    scaleX: 1,
+    scaleY: 1,
+    children: [],
+    metadata: {
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      createdBy: "voice",
+      name: params.name ?? result.name,
+    },
+  };
+
+  const addResult = store.addNode(node);
+  return JSON.stringify(addResult);
+}
+
+/**
  * 导出所有工具的映射表，供 ElevenLabs clientTools 配置使用
  */
 export function getCanvasTools(): Record<string, (params: any) => string> {
@@ -508,6 +608,7 @@ export function getCanvasTools(): Record<string, (params: any) => string> {
     set_canvas_background,
     generate_shape,
     generate_image,
+    generate_template,
     modify_node,
     delete_node,
     undo_action,
