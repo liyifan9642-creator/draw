@@ -3,7 +3,9 @@
  *
  * 控制模式：
  *   文本模式：在输入框中输入自然语言指令，回车或点击发送
- *   语音模式：点击右下角悬浮按钮开启语音监听（需配置 VITE_ELEVENLABS_AGENT_ID）
+ *   语音模式：点击右下角悬浮按钮开启语音监听（需配置 VITE_MIMO_API_KEY）
+ *
+ * V2.0: 使用 mimo-v2.5-pro 替代 ElevenLabs 作为 LLM 后端
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -133,9 +135,12 @@ export default function App() {
     };
   }, [store]);
 
-  // ─── 语音 Agent（可选）────────────────────────────────────────
+  // ─── 语音 Agent（mimo + Web Speech API）─────────────────────────
 
-  const agentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID || "";
+  const apiKey = import.meta.env.VITE_MIMO_API_KEY || "";
+  const baseUrl = import.meta.env.VITE_MIMO_BASE_URL || "https://token-plan-cn.xiaomimimo.com/v1";
+  const model = import.meta.env.VITE_MIMO_MODEL || "mimo-v2.5-pro";
+  const [ttsEnabled, setTtsEnabled] = useState(false);
 
   const {
     isListening,
@@ -145,9 +150,17 @@ export default function App() {
     agentResponse,
     error: agentError,
     toggle: toggleVoice,
+    stopTts: stopTtsPlayback,
+    isSpeaking,
   } = useVoiceAgent({
-    agentId,
+    apiKey,
+    baseUrl,
+    model,
     store: storeReady ? store : null,
+    canvasWidth: CANVAS_WIDTH,
+    canvasHeight: CANVAS_HEIGHT,
+    onLog: addLog,
+    enableTts: ttsEnabled,
   });
 
   return (
@@ -190,15 +203,19 @@ export default function App() {
                 color: isListening ? "#4CAF50" : "#9E9E9E",
               }}
             >
-              {agentStatus === "connected"
-                ? agentMode === "listening"
-                  ? "Listening"
-                  : "Speaking"
-                : agentStatus === "connecting"
-                  ? "Connecting..."
-                  : agentId
-                    ? "Off"
-                    : "未配置"}
+              {agentStatus === "listening"
+                ? "Listening"
+                : agentStatus === "thinking"
+                  ? "Thinking..."
+                  : agentStatus === "speaking"
+                    ? "Speaking"
+                    : agentStatus === "connected"
+                      ? "Ready"
+                      : agentStatus === "connecting"
+                        ? "Connecting..."
+                        : apiKey
+                          ? "Off"
+                          : "未配置"}
             </span>
           </div>
 
@@ -218,7 +235,7 @@ export default function App() {
       </div>
 
       {/* 语音控制悬浮按钮（可选） */}
-      {agentId && (
+      {apiKey && (
         <VoiceButton
           status={agentStatus}
           mode={agentMode}
@@ -227,8 +244,25 @@ export default function App() {
           userTranscript={userTranscript}
           agentResponse={agentResponse}
           onToggle={toggleVoice}
+          isSpeaking={isSpeaking}
+          onStopTts={stopTtsPlayback}
         />
       )}
+
+      {/* TTS 开关 */}
+      <div style={styles.ttsToggle}>
+        <button
+          onClick={() => setTtsEnabled((v) => !v)}
+          style={{
+            ...styles.ioButton,
+            background: ttsEnabled ? "#4CAF50" : "#16213e",
+            borderColor: ttsEnabled ? "#4CAF50" : "#444",
+          }}
+          title={ttsEnabled ? "关闭语音回复" : "开启语音回复"}
+        >
+          {ttsEnabled ? "🔊 TTS ON" : "🔇 TTS OFF"}
+        </button>
+      </div>
 
       {/* Import/Export 按钮 */}
       <div style={styles.ioButtons}>
@@ -336,6 +370,14 @@ const styles: Record<string, React.CSSProperties> = {
   ioButtons: {
     position: "fixed" as const,
     bottom: 32,
+    left: 32,
+    display: "flex",
+    gap: 8,
+    zIndex: 9999,
+  },
+  ttsToggle: {
+    position: "fixed" as const,
+    bottom: 80,
     left: 32,
     display: "flex",
     gap: 8,

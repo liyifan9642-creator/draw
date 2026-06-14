@@ -343,25 +343,32 @@ export function move_node(params: {
  * 查询当前画布状态摘要
  * 只读操作，不修改画布
  */
-export function query_canvas_state(): string {
-  const store = getStore();
-  const nodes = store.getNodes();
-  const summary = {
-    nodeCount: store.nodeCount,
-    edgeCount: store.edgeCount,
-    background: store.getBackground(),
-    undoDepth: store.undoDepth,
-    redoDepth: store.redoDepth,
-    nodes: nodes.map((n) => ({
-      id: n.id,
-      type: n.type,
-      name: n.metadata.name,
-      x: Math.round(n.x),
-      y: Math.round(n.y),
-      fill: n.fill,
-    })),
-  };
-  return JSON.stringify(summary);
+export function query_canvas_state(_params?: unknown): string {
+  try {
+    const store = getStore();
+    const nodes = store.getNodes();
+    const summary = {
+      nodeCount: store.nodeCount,
+      edgeCount: store.edgeCount,
+      background: store.getBackground(),
+      undoDepth: store.undoDepth,
+      redoDepth: store.redoDepth,
+      nodes: nodes.map((n) => ({
+        id: n.id,
+        type: n.type,
+        name: n.metadata.name,
+        x: Math.round(n.x),
+        y: Math.round(n.y),
+        fill: n.fill,
+      })),
+    };
+    return JSON.stringify(summary);
+  } catch (err) {
+    return JSON.stringify({
+      success: false,
+      errorMessage: `查询失败: ${err instanceof Error ? err.message : String(err)}`,
+    });
+  }
 }
 
 /**

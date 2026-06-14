@@ -11,6 +11,9 @@ importers:
       kiwi.js:
         specifier: ^1.1.3
         version: 1.1.3
+      openai:
+        specifier: ^6.42.0
+        version: 6.42.0
 
   apps/api:
     dependencies:
@@ -91,6 +94,9 @@ importers:
       '@vdc/shared':
         specifier: workspace:*
         version: link:../shared
+      kiwi.js:
+        specifier: ^1.1.3
+        version: 1.1.3
       konva:
         specifier: ^9.2.0
         version: 9.3.22
@@ -907,6 +913,17 @@ packages:
   node-releases@2.0.47:
     resolution: {integrity: sha512-Uzmd6LXpouKo8EUK68IjH4+E01w/hXyV3R3g/geCJo+rXLNfh1xucB+LOzYEOQPSiUK3h/xZf0cQGcSsmyL2Og==}
     engines: {node: '>=18'}
+
+  openai@6.42.0:
+    resolution: {integrity: sha512-1WFEt/uXMXOLhYRNkgJWo08Y2YNvNwpVU72K7ibrWgWpNOXd4VojXLbe6SQ4bLiUQ3Y8jz4IiyVkylJCL1DtZg==}
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.25 || ^4.0
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
 
   pathe@1.1.2:
     resolution: {integrity: sha512-whLdWMYL2TwI08hn8/ZqAbrVemu0LNaNNJZX73O6qaIdCTfXutsLhMkjdENX0qhsQ9uIimo4/aQOmXkoon2nDQ==}
@@ -1757,6 +1774,8 @@ snapshots:
   nanoid@3.3.12: {}
 
   node-releases@2.0.47: {}
+
+  openai@6.42.0: {}
 
   pathe@1.1.2: {}
 
