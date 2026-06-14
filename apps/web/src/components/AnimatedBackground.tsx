@@ -31,7 +31,7 @@ interface GlowOrb {
   cy: number;
 }
 
-const PARTICLE_COUNT = 180;
+const PARTICLE_COUNT = 320;
 const GLOW_ORB_COUNT = 5;
 const CONNECTION_DIST = 140;
 const MOUSE_RADIUS = 180;
@@ -51,8 +51,8 @@ export function AnimatedBackground() {
         y: Math.random() * h,
         vx: (Math.random() - 0.5) * 0.4,
         vy: (Math.random() - 0.5) * 0.4,
-        radius: Math.random() * 1.8 + 0.5,
-        opacity: Math.random() * 0.5 + 0.2,
+        radius: Math.random() * 2 + 0.8,
+        opacity: Math.random() * 0.5 + 0.35,
         hue: Math.random() < 0.3
             ? 170 + Math.random() * 30   // cyan
             : Math.random() < 0.6
@@ -137,8 +137,8 @@ export function AnimatedBackground() {
         orb.y = orb.cy + Math.sin(orb.angle * 0.7) * orb.orbitRadius * 0.6;
 
         const g = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, orb.radius);
-        g.addColorStop(0, `hsla(${orb.hue}, 75%, 55%, 0.14)`);
-        g.addColorStop(0.5, `hsla(${orb.hue}, 65%, 40%, 0.07)`);
+        g.addColorStop(0, `hsla(${orb.hue}, 85%, 60%, 0.18)`);
+        g.addColorStop(0.5, `hsla(${orb.hue}, 75%, 45%, 0.10)`);
         g.addColorStop(1, "transparent");
         ctx.fillStyle = g;
         ctx.fillRect(orb.x - orb.radius, orb.y - orb.radius, orb.radius * 2, orb.radius * 2);
@@ -174,7 +174,7 @@ export function AnimatedBackground() {
         // Draw particle
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${p.hue}, 80%, 75%, ${p.opacity})`;
+        ctx.fillStyle = `hsla(${p.hue}, 90%, 82%, ${p.opacity})`;
         ctx.fill();
       }
 
@@ -186,8 +186,8 @@ export function AnimatedBackground() {
           const dy = particles[i].y - particles[j].y;
           const d = Math.sqrt(dx * dx + dy * dy);
           if (d < CONNECTION_DIST) {
-            const alpha = (1 - d / CONNECTION_DIST) * 0.18;
-            ctx.strokeStyle = `hsla(240, 75%, 70%, ${alpha})`;
+            const alpha = (1 - d / CONNECTION_DIST) * 0.22;
+            ctx.strokeStyle = `hsla(240, 80%, 80%, ${alpha})`;
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
@@ -200,8 +200,8 @@ export function AnimatedBackground() {
         const mdy = particles[i].y - my;
         const md = Math.sqrt(mdx * mdx + mdy * mdy);
         if (md < MOUSE_RADIUS) {
-          const alpha = (1 - md / MOUSE_RADIUS) * 0.28;
-          ctx.strokeStyle = `hsla(270, 85%, 75%, ${alpha})`;
+          const alpha = (1 - md / MOUSE_RADIUS) * 0.35;
+          ctx.strokeStyle = `hsla(270, 90%, 82%, ${alpha})`;
           ctx.beginPath();
           ctx.moveTo(particles[i].x, particles[i].y);
           ctx.lineTo(mx, my);
