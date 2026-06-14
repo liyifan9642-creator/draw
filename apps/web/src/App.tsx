@@ -252,7 +252,7 @@ export default function App() {
 
             <h3 className="vdc-panel-title" style={{ marginTop: 28 }}>操作日志</h3>
             <div className="vdc-log-container">
-              {logs.map((log, i) => (
+              {logs.filter(log => log.color !== '#F44336' && log.color !== '#ff4081').map((log, i) => (
                 <div key={i} className="vdc-log-entry">
                   <span className="vdc-log-time">{log.time}</span>
                   <span style={{ color: log.color }}>{log.message}</span>
