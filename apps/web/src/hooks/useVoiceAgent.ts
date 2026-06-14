@@ -127,6 +127,24 @@ function getToolSchemas(): ChatCompletionTool[] {
     {
       type: "function",
       function: {
+        name: "search_icon",
+        description: "语义搜索矢量图标。100+ 常用图标（搜索、锁、相机、邮件、音乐、设置、用户、心、星等）。支持中英文关键词。",
+        parameters: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: '搜索关键词，如 "搜索"、"锁"、"camera"、"heart"' },
+            gridCoordinate: { type: "string", description: '放置位置，如 "x25y25"' },
+            size: { type: "number", description: "图标大小（像素），默认 100" },
+            fill: { type: "string" }, stroke: { type: "string" }, strokeWidth: { type: "number" },
+            name: { type: "string" },
+          },
+          required: ["query"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
         name: "generate_image", description: "生成 AI 图像",
         parameters: {
           type: "object",

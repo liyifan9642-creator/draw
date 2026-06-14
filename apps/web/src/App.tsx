@@ -181,10 +181,7 @@ export default function App() {
               <div ref={containerRef} style={styles.canvas} />
             </div>
 
-            {/* 文本输入 */}
-            <div style={styles.inputWrapper}>
-              <TextInput store={store} canvasWidth={CANVAS_WIDTH} canvasHeight={CANVAS_HEIGHT} onLog={addLog} />
-            </div>
+            {/* 文本输入（已隐藏，仅使用语音控制） */}
           </div>
 
           {/* 状态面板 */}

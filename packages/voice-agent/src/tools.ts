@@ -18,6 +18,7 @@ import { generateImage } from "./imageService";
 import type { ImageStyle } from "./imageService";
 import type { AlignmentRelation } from "@vdc/canvas-engine";
 import { generateTemplate } from "./templates";
+import { searchIcons } from "./iconSearch";
 
 let _store: CanvasStore | null = null;
 let _idCounter = 0;
@@ -822,6 +823,140 @@ function offsetSvgPath(pathData: string, offsetX: number, offsetY: number): stri
 }
 
 /**
+ * 语义搜索矢量图标
+ *
+ * 内置 100+ 常用 Lucide 图标，支持中英文关键词搜索。
+ * 搜索结果包含 SVG path data，可直接渲染为矢量图形。
+ */
+export function search_icon(params: {
+  query: string;
+  gridCoordinate?: string;
+  size?: number;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  name?: string;
+}): string {
+  const store = getStore();
+  const results = searchIcons(params.query, 1);
+
+  if (results.length === 0) {
+    return JSON.stringify({
+      success: false,
+      errorCode: "NOT_FOUND",
+      errorMessage: `未找到匹配 "${params.query}" 的图标`,
+    });
+  }
+
+  const icon = results[0].icon;
+
+  // 解析坐标
+  let cx: number;
+  let cy: number;
+  if (params.gridCoordinate) {
+    const resolved = resolveGridCoordinate(
+      params.gridCoordinate,
+      _canvasWidth,
+      _canvasHeight,
+      true
+    );
+    if (!resolved) {
+      return JSON.stringify({
+        success: false,
+        errorCode: "INVALID_PARAMS",
+        errorMessage: `无效的网格坐标: '${params.gridCoordinate}'`,
+      });
+    }
+    cx = resolved.x;
+    cy = resolved.y;
+  } else {
+    cx = _canvasWidth / 2;
+    cy = _canvasHeight / 2;
+  }
+
+  // 计算图标尺寸和位置（24x24 viewBox 缩放到指定 size）
+  const size = params.size ?? 100;
+  const scale = size / 24;
+  const x = cx - size / 2;
+  const y = cy - size / 2;
+
+  // 缩放 path data
+  const scaledPath = scaleSvgPath(icon.pathData, scale);
+
+  // 创建 path 节点
+  const id = nextId("icon");
+  const node: Node = {
+    id,
+    type: "path",
+    x,
+    y,
+    width: size,
+    height: size,
+    rotation: 0,
+    fill: params.fill ?? "transparent",
+    stroke: params.stroke ?? "#333333",
+    strokeWidth: params.strokeWidth ?? 2,
+    opacity: 1,
+    pathData: scaledPath,
+    zIndex: store.nodeCount,
+    locked: false,
+    visible: true,
+    scaleX: 1,
+    scaleY: 1,
+    children: [],
+    metadata: {
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      createdBy: "voice",
+      name: params.name ?? icon.name,
+    },
+  };
+
+  const addResult = store.addNode(node);
+  return JSON.stringify(addResult);
+}
+
+/**
+ * 缩放 SVG Path 数据中的所有坐标
+ */
+function scaleSvgPath(pathData: string, scale: number): string {
+  const commands = "MmLlHhVvCcSsQqTtAaZz";
+  let result = "";
+  let numIdx = 0;
+  let currentCommand = "";
+  let i = 0;
+
+  while (i < pathData.length) {
+    const ch = pathData[i];
+
+    if (commands.includes(ch)) {
+      currentCommand = ch;
+      result += ch;
+      i++;
+      numIdx = 0;
+      continue;
+    }
+
+    if (ch === "-" || ch === "." || (ch >= "0" && ch <= "9")) {
+      let numStr = "";
+      while (i < pathData.length && (pathData[i] === "-" || pathData[i] === "." || (pathData[i] >= "0" && pathData[i] <= "9"))) {
+        numStr += pathData[i];
+        i++;
+      }
+      const num = parseFloat(numStr);
+      result += (num * scale).toFixed(1);
+      numIdx++;
+      continue;
+    }
+
+    result += ch;
+    i++;
+  }
+
+  return result;
+}
+
+/**
  * 导出所有工具的映射表，供 ElevenLabs clientTools 配置使用
  */
 export function getCanvasTools(): Record<string, (params: any) => string> {
@@ -831,6 +966,7 @@ export function getCanvasTools(): Record<string, (params: any) => string> {
     generate_image,
     generate_template,
     generate_svg,
+    search_icon,
     modify_node,
     delete_node,
     undo_action,

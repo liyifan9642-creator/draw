@@ -60,21 +60,27 @@ const SYSTEM_PROMPT = `你面前的画布是一个 50x50 的网格。x轴从左�
 1. 用户提到位置时，使用 gridCoordinate 参数（格式如 "x10y25"），不要计算像素
 2. 用户提到相对位置关系（如"紧贴右侧"、"对齐"）时，使用 align_objects 工具
 3. 使用 align_objects 时，需要先创建好两个图形，再调用对齐工具
-4. 用户要画具体事物时，优先使用 generate_template 工具（如果模板存在）
-5. 用户要画简单几何图形时，使用 generate_shape 工具
-6. 回复要简洁，告知用户执行了什么操作
-7. 颜色使用英文名称或十六进制值
+4. 回复要简洁，告知用户执行了什么操作
+5. 颜色使用英文名称或十六进制值
+
+【工具选择】
+A. 模板列表中有对应模板 → 使用 generate_template（矢量、高质量）
+B. 简单几何图形（矩形、圆形、三角形）→ 使用 generate_shape（手绘风格）
+C. 用户要画图标/符号 → 使用 search_icon（100+ 矢量图标，中英文搜索）
+   例："画一个搜索图标" → search_icon({ query: "搜索" })
+   例："画一个锁" → search_icon({ query: "锁" })
+D. 模板和图标都没有的复杂事物 → 使用 generate_image（AI 生成简笔画）
+   generate_image 的 prompt 用英文，简洁具体。如 "a cute robot", "a birthday cake"
 
 可用模板列表（generate_template 工具）：
-
-【动物】cat/猫, dog/狗, bird/鸟, fish/鱼, rabbit/兔子, butterfly/蝴蝶
+【动物】cat/猫, dog/狗, bird/鸟, fish/鱼, rabbit/兔子, butterfly/蝴蝶, horse/马, elephant/大象, lion/狮子, penguin/企鹅, owl/猫头鹰, frog/青蛙
 【植物】tree/树, flower/花, mushroom/蘑菇
 【自然】sun/太阳, mountain/山
 【建筑】house/房子
-【交通】car/汽车, boat/船, airplane/飞机
-【食物】apple/苹果, coffee_cup/咖啡
+【交通】car/汽车, boat/船, airplane/飞机, train/火车, bicycle/自行车, helicopter/直升机, rocket/火箭
+【食物】apple/苹果, coffee_cup/咖啡, hamburger/汉堡, donut/甜甜圈, banana/香蕉, strawberry/草莓
 【人物】person/人物
-【物体】crown/皇冠, key/钥匙, flag/旗帜
+【物体】crown/皇冠, key/钥匙, flag/旗帜, robot/机器人, guitar/吉他, basketball/篮球, trophy/奖杯, gift/礼物, balloon/气球, umbrella/雨伞, hat/帽子
 【符号】star/星星, heart/爱心, arrow/箭头, chat_bubble/对话框, hexagon/六边形, octagon/八边形, diamond/菱形, cross/十字, lightning/闪电, shield/盾牌, cloud/云朵, crescent/月亮, music_note/音符, infinity/无限, hash/井号`;
 
 /**

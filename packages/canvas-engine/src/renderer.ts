@@ -469,7 +469,7 @@ export class KonvaRenderer {
    * 加载期间显示占位矩形。
    * 如果节点没有 imageUrl（如 Loading 占位），显示文本占位。
    */
-  private createImageNode(node: Node): Konva.Rect | Konva.Image {
+  private createImageNode(node: Node): Konva.Rect | Konva.Shape {
     const width = node.width ?? 300;
     const height = node.height ?? 300;
 
@@ -494,17 +494,24 @@ export class KonvaRenderer {
     // 有 imageUrl，检查缓存
     const cached = this.imageCache.get(node.imageUrl);
     if (cached) {
-      // 图片已缓存，直接创建 Konva.Image
-      return new Konva.Image({
+      // 图片已缓存，使用 multiply 混合模式渲染（白底变透明）
+      const img = cached;
+      return new Konva.Shape({
         x: node.x,
         y: node.y,
         width,
         height,
-        image: cached,
         rotation: node.rotation,
         opacity: node.opacity,
         scaleX: node.scaleX,
         scaleY: node.scaleY,
+        sceneFunc: (ctx) => {
+          // multiply 混合模式：白色变透明，黑色线条保留
+          ctx.save();
+          ctx._context.globalCompositeOperation = "multiply";
+          ctx.drawImage(img, 0, 0, width, height);
+          ctx.restore();
+        },
       });
     }
 
@@ -553,17 +560,22 @@ export class KonvaRenderer {
       const storeNode = this.store.getNodeById(nodeId);
       if (!storeNode) return; // 节点已被删除
 
-      // 创建新的 Konva.Image 替换占位 Rect
-      const imageNode = new Konva.Image({
+      // 创建新的图像节点（multiply 混合模式，白底变透明）
+      const imageNode = new Konva.Shape({
         x: storeNode.x,
         y: storeNode.y,
         width,
         height,
-        image: img,
         rotation: storeNode.rotation,
         opacity: storeNode.opacity,
         scaleX: storeNode.scaleX,
         scaleY: storeNode.scaleY,
+        sceneFunc: (ctx) => {
+          ctx.save();
+          ctx._context.globalCompositeOperation = "multiply";
+          ctx.drawImage(img, 0, 0, width, height);
+          ctx.restore();
+        },
       });
       imageNode.setAttr("storeId", nodeId);
 
@@ -679,32 +691,17 @@ export class KonvaRenderer {
    * 检查是否需要重建节点（类型变更或图片 URL 变更）
    */
   private needsNodeRecreation(konvaNode: Konva.Node, storeNode: Node): boolean {
-    const isKonvaImage = konvaNode instanceof Konva.Image;
     const isKonvaText = konvaNode instanceof Konva.Text;
     const isKonvaPath = konvaNode instanceof Konva.Path;
     const isKonvaShape = konvaNode instanceof Konva.Shape;
 
-    // rough 形状（rect/circle/ellipse/triangle/line）都是 Konva.Shape
-    // 它们不是 Konva.Rect/Konva.Circle，所以不能用类型不匹配来判断
-    // 只有 image/text/path 的类型不匹配才需要重建
-    const typeMismatch =
-      (storeNode.type === "image" && !isKonvaImage) ||
-      (storeNode.type === "text" && !isKonvaText) ||
-      (storeNode.type === "path" && !isKonvaPath);
+    // text/path 类型不匹配 → 重建
+    if (storeNode.type === "text" && !isKonvaText) return true;
+    if (storeNode.type === "path" && !isKonvaPath) return true;
 
-    if (typeMismatch) return true;
-
-    // image 节点：imageUrl 变更需要重建
-    if (storeNode.type === "image" && isKonvaImage) {
-      const currentImageUrl = konvaNode.getAttr("imageUrl");
-      if (currentImageUrl !== storeNode.imageUrl) return true;
-    }
-
-    // rough 形状（rect/circle/ellipse/triangle/line）是 Konva.Shape
-    // updateKonvaNode 中的类型特定更新对它们无效，始终重建
-    if (isKonvaShape && !isKonvaImage && !isKonvaText && !isKonvaPath) {
-      return true;
-    }
+    // Konva.Shape（rough 形状 + image 节点）→ 始终重建
+    // sceneFunc 是一次性绘制，属性变更需要完整重绘
+    if (isKonvaShape) return true;
 
     return false;
   }

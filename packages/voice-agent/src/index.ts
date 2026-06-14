@@ -28,6 +28,7 @@ export {
   generate_image,
   generate_template,
   generate_svg,
+  search_icon,
   modify_node,
   delete_node,
   undo_action,
@@ -39,3 +40,7 @@ export {
   align_objects,
   query_canvas_state,
 } from "./tools";
+
+// 图标搜索
+export { searchIcons, getIconByName, getAllIconNames, getIconsByCategory, getCategories } from "./iconSearch";
+export type { IconEntry, SearchResult } from "./iconSearch";
