@@ -601,6 +601,227 @@ export function generate_template(params: {
 }
 
 /**
+ * 单次 SVG 全量生成
+ *
+ * LLM 一次性输出完整的 SVG Path 数据（d 属性），前端直接渲染。
+ * 不拆分、不多次调用，一个调用 = 一个完整的矢量图形。
+ *
+ * 适用场景：复杂有机形状（动物、人物、食物等）
+ *
+ * SVG Path 命令参考：
+ * M x,y — 移动画笔
+ * L x,y — 直线
+ * Q cx,cy x,y — 二次贝塞尔曲线
+ * C cx1,cy1 cx2,cy2 x,y — 三次贝塞尔曲线
+ * A rx,ry rotation large-arc sweep x,y — 弧线
+ * Z — 闭合路径
+ *
+ * 坐标系：以 (0,0) 为左上角，画布 500x500 像素。
+ * LLM 应在 0-500 范围内绘制。
+ */
+export function generate_svg(params: {
+  pathData: string;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  gridCoordinate?: string;
+  name?: string;
+}): string {
+  const store = getStore();
+
+  if (!params.pathData || params.pathData.trim().length === 0) {
+    return JSON.stringify({
+      success: false,
+      errorCode: "INVALID_PARAMS",
+      errorMessage: "pathData 不能为空",
+    });
+  }
+
+  // 计算路径的边界框（简化：取路径中的坐标极值）
+  const bbox = estimateSvgBBox(params.pathData);
+  const pathWidth = bbox.maxX - bbox.minX;
+  const pathHeight = bbox.maxY - bbox.minY;
+
+  // 解析放置位置（优先 gridCoordinate，否则居中）
+  let placeX: number;
+  let placeY: number;
+
+  if (params.gridCoordinate) {
+    const resolved = resolveGridCoordinate(
+      params.gridCoordinate,
+      _canvasWidth,
+      _canvasHeight,
+      true
+    );
+    if (!resolved) {
+      return JSON.stringify({
+        success: false,
+        errorCode: "INVALID_PARAMS",
+        errorMessage: `无效的网格坐标: '${params.gridCoordinate}'`,
+      });
+    }
+    // 图形以网格中心对齐，需要偏移到左上角
+    placeX = resolved.x - pathWidth / 2;
+    placeY = resolved.y - pathHeight / 2;
+  } else {
+    // 默认居中
+    placeX = (_canvasWidth - pathWidth) / 2;
+    placeY = (_canvasHeight - pathHeight) / 2;
+  }
+
+  // 偏移路径数据，将路径从其自身坐标系平移到画布位置
+  const offsetX = placeX - bbox.minX;
+  const offsetY = placeY - bbox.minY;
+  const adjustedPath = offsetSvgPath(params.pathData, offsetX, offsetY);
+
+  // 创建 path 节点
+  const id = nextId("svg");
+  const node: Node = {
+    id,
+    type: "path",
+    x: placeX,
+    y: placeY,
+    width: pathWidth,
+    height: pathHeight,
+    rotation: 0,
+    fill: params.fill ?? "transparent",
+    stroke: params.stroke ?? "#000000",
+    strokeWidth: params.strokeWidth ?? 2,
+    opacity: 1,
+    pathData: adjustedPath,
+    zIndex: store.nodeCount,
+    locked: false,
+    visible: true,
+    scaleX: 1,
+    scaleY: 1,
+    children: [],
+    metadata: {
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      createdBy: "voice",
+      name: params.name ?? `SVG_${store.nodeCount + 1}`,
+    },
+  };
+
+  const addResult = store.addNode(node);
+  return JSON.stringify(addResult);
+}
+
+/**
+ * 估算 SVG Path 的边界框
+ * 从路径数据中提取所有坐标点，计算最小/最大值
+ */
+function estimateSvgBBox(pathData: string): {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+} {
+  // 匹配所有数字（包括负数和小数）
+  const numbers = pathData.match(/-?\d+\.?\d*/g)?.map(Number) ?? [];
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  // 简化处理：将数字两两配对为 (x, y) 坐标
+  // 注意：这不处理弧线命令的参数，但对边界框估算足够
+  for (let i = 0; i < numbers.length - 1; i += 2) {
+    const x = numbers[i];
+    const y = numbers[i + 1];
+    if (isFinite(x)) {
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+    }
+    if (isFinite(y)) {
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    }
+  }
+
+  // 如果没有有效坐标，返回默认值
+  if (!isFinite(minX)) {
+    return { minX: 0, minY: 0, maxX: 100, maxY: 100 };
+  }
+
+  return { minX, minY, maxX, maxY };
+}
+
+/**
+ * 平移 SVG Path 数据中的所有坐标
+ * 简化处理：将数字两两配对为 (x, y) 并加上偏移量
+ */
+function offsetSvgPath(pathData: string, offsetX: number, offsetY: number): string {
+  // SVG 路径命令字母
+  const commands = "MmLlHhVvCcSsQqTtAaZz";
+
+  let result = "";
+  let numIdx = 0;
+  let currentCommand = "";
+
+  // 逐字符解析
+  let i = 0;
+  while (i < pathData.length) {
+    const ch = pathData[i];
+
+    if (commands.includes(ch)) {
+      currentCommand = ch;
+      result += ch;
+      i++;
+      numIdx = 0;
+      continue;
+    }
+
+    if (ch === "-" || ch === "." || (ch >= "0" && ch <= "9")) {
+      // 读取完整数字
+      let numStr = "";
+      while (i < pathData.length && (pathData[i] === "-" || pathData[i] === "." || (pathData[i] >= "0" && pathData[i] <= "9"))) {
+        numStr += pathData[i];
+        i++;
+      }
+      const num = parseFloat(numStr);
+
+      // 判断是否需要偏移
+      const upperCmd = currentCommand.toUpperCase();
+      let adjusted = num;
+
+      if (upperCmd === "A") {
+        // 弧线命令：参数顺序为 rx ry x-rotation large-arc sweep x y
+        // 只偏移第6和第7个参数（x, y）
+        if (numIdx === 5) adjusted = num + offsetX; // x
+        if (numIdx === 6) adjusted = num + offsetY; // y
+      } else if (upperCmd === "H") {
+        // 水平线：只有 x
+        adjusted = num + offsetX;
+      } else if (upperCmd === "V") {
+        // 垂直线：只有 y
+        adjusted = num + offsetY;
+      } else if (upperCmd === "Z") {
+        // 闭合：无参数
+      } else {
+        // 其他命令：偶数索引偏移 x，奇数索引偏移 y
+        if (numIdx % 2 === 0) {
+          adjusted = num + offsetX;
+        } else {
+          adjusted = num + offsetY;
+        }
+      }
+
+      result += adjusted.toFixed(1);
+      numIdx++;
+      continue;
+    }
+
+    // 其他字符（空格、逗号等）
+    result += ch;
+    i++;
+  }
+
+  return result;
+}
+
+/**
  * 导出所有工具的映射表，供 ElevenLabs clientTools 配置使用
  */
 export function getCanvasTools(): Record<string, (params: any) => string> {
@@ -609,6 +830,7 @@ export function getCanvasTools(): Record<string, (params: any) => string> {
     generate_shape,
     generate_image,
     generate_template,
+    generate_svg,
     modify_node,
     delete_node,
     undo_action,

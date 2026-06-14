@@ -562,6 +562,42 @@ function executeTool(
       );
     }
 
+    case "generate_svg": {
+      const pathData = params.pathData as string;
+      if (!pathData) {
+        return JSON.stringify({ success: false, errorMessage: "pathData 不能为空" });
+      }
+
+      // 简化：直接创建 path 节点，不做坐标偏移
+      const node: Node = {
+        id: nextId("svg"),
+        type: "path",
+        x: 0,
+        y: 0,
+        width: 500,
+        height: 500,
+        rotation: 0,
+        fill: (params.fill as string) ?? "transparent",
+        stroke: (params.stroke as string) ?? "#000000",
+        strokeWidth: (params.strokeWidth as number) ?? 2,
+        opacity: 1,
+        pathData,
+        zIndex: store.nodeCount,
+        locked: false,
+        visible: true,
+        scaleX: 1,
+        scaleY: 1,
+        children: [],
+        metadata: {
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          createdBy: "mouse",
+          name: (params.name as string) ?? `SVG_${store.nodeCount + 1}`,
+        },
+      };
+      return JSON.stringify(store.addNode(node));
+    }
+
     case "query_canvas_state": {
       const nodes = store.getNodes();
       return JSON.stringify({

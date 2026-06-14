@@ -108,6 +108,25 @@ function getToolSchemas(): ChatCompletionTool[] {
     {
       type: "function",
       function: {
+        name: "generate_svg",
+        description: "单次 SVG 全量生成。用于画复杂有机形状（动物、人物、食物等）。一次性输出完整的 SVG Path 数据，不要拆分多次调用。画布坐标系 500x500 像素。",
+        parameters: {
+          type: "object",
+          properties: {
+            pathData: { type: "string", description: "完整的 SVG Path 数据，用 M/L/Q/C/A/Z 命令。如 M250,400 C200,380..." },
+            fill: { type: "string", description: "填充色，如 yellow, #FFD700" },
+            stroke: { type: "string", description: "描边色" },
+            strokeWidth: { type: "number", description: "描边宽度" },
+            gridCoordinate: { type: "string", description: '放置位置，如 "x25y25"' },
+            name: { type: "string", description: "图形名称" },
+          },
+          required: ["pathData"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
         name: "generate_image", description: "生成 AI 图像",
         parameters: {
           type: "object",

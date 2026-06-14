@@ -25,6 +25,7 @@ export {
   generate_shape,
   generate_image,
   generate_template,
+  generate_svg,
   modify_node,
   delete_node,
   undo_action,
